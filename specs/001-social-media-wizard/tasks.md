@@ -86,13 +86,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T031 [P] [US2] Create DEPTH method system prompt template in src/lib/depth-prompts.ts (three expert roles: behavioural psychologist, direct response copywriter, data analyst; self-scoring instructions; uncertain claim flagging)
-- [ ] T032 [P] [US2] Create ContentVariantCard component in src/components/content/ContentVariantCard.tsx (displays copy, hashtags, CTA, DEPTH scores as 4 radial gauges, uncertain claims highlighted, approve/reject/revise buttons)
-- [ ] T033 [US2] Create generate-content Edge Function in supabase/functions/generate-content/index.ts (accepts campaign_id + shirt_ids + platform; validates all shirts are in_stock — rejects out-of-stock with error; calls Claude API with DEPTH prompt; returns ContentVariant[] with scores; auto-improves any dimension < 8 before returning)
-- [ ] T034 [US2] Create ContentReview page in src/pages/ContentReview.tsx (select campaign, view all generated variants in grid, bulk approve/reject, filter by platform and score)
-- [ ] T035 [US2] Create content-variants Edge Function in supabase/functions/content-variants/index.ts (PATCH approval_status, GET variants by campaign with filtering)
-- [ ] T036 [US2] Create Campaigns page in src/pages/Campaigns.tsx (list all campaigns, create new draft, select shirts from Shopify catalogue, trigger content generation, link to ContentReview)
-- [ ] T037 [US2] Create CampaignWizard component in src/components/campaigns/CampaignWizard.tsx (step-by-step: select shirts from Shopify catalogue — out-of-stock greyed out and unselectable → choose channels → set schedule → set budget → generate content → review → approve → schedule)
+- [x] T031 [P] [US2] Create DEPTH method system prompt template in src/lib/depth-prompts.ts (three expert roles: behavioural psychologist, direct response copywriter, data analyst; self-scoring instructions; uncertain claim flagging)
+- [x] T032 [P] [US2] Create ContentVariantCard component in src/components/content/ContentVariantCard.tsx (displays copy, hashtags, CTA, DEPTH scores as 4 radial gauges, uncertain claims highlighted, approve/reject/revise buttons)
+- [x] T033 [US2] Create generate-content Edge Function in supabase/functions/generate-content/index.ts (accepts campaign_id + shirt_ids + platform; validates all shirts are in_stock — rejects out-of-stock with error; calls Claude API with DEPTH prompt; returns ContentVariant[] with scores; auto-improves any dimension < 8 before returning)
+- [x] T034 [US2] Create ContentReview page in src/pages/ContentReview.tsx (select campaign, view all generated variants in grid, bulk approve/reject, filter by platform and score)
+- [x] T035 [US2] Create content-variants Edge Function in supabase/functions/content-variants/index.ts (PATCH approval_status, GET variants by campaign with filtering)
+- [x] T036 [US2] Create Campaigns page in src/pages/Campaigns.tsx (list all campaigns, create new draft, select shirts from Shopify catalogue, trigger content generation, link to ContentReview)
+- [x] T037 [US2] Create CampaignWizard component in src/components/campaigns/CampaignWizard.tsx (step-by-step: select shirts from Shopify catalogue — out-of-stock greyed out and unselectable → choose channels → set schedule → set budget → generate content → review → approve → schedule)
 
 **Checkpoint**: Can generate DEPTH method content for shirts, review scores, approve/reject variants. Campaign creation wizard functional.
 
