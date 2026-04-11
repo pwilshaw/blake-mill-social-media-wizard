@@ -13,11 +13,16 @@ node_modules/
 # Build
 dist/
 build/
-.next/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.tmp
+
+# Logs
+*.log
+npm-debug.log*
 
 # Large binary files (tracked separately)
 *.xlsx
@@ -25,3 +30,25 @@ build/
 
 # Sensitive data
 *.csv
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# Large files (exceed GitHub 100MB limit)
+*.zip
+Rouges/
+
+# iOS app (separate project)
+App/
+
+# Existing assets (not part of web app)
+Shirts/
+Screenshots/
+Figures/
+Data/
+"Feedback forms"/
+*.png
+BMAppIcon.png

@@ -19,12 +19,12 @@
 
 **Purpose**: Project initialization, tooling, and deployment configuration
 
-- [ ] T001 Initialize Vite + React 19 + TypeScript project with Tailwind CSS and shadcn/ui in project root
-- [ ] T002 Configure ESLint, Prettier, and TypeScript strict mode in eslint.config.js, .prettierrc, tsconfig.json
-- [ ] T003 [P] Install core dependencies: @supabase/supabase-js, @anthropic-ai/sdk, react-router-dom, date-fns, recharts, @tanstack/react-query
-- [ ] T004 [P] Create .env.example with all required environment variables per specs/001-social-media-wizard/quickstart.md
-- [ ] T005 [P] Create Vercel configuration in vercel.json with serverless function routing for api/ directory
-- [ ] T006 [P] Create Supabase project via dashboard (not CLI): document project URL and anon key in .env.example, verify Edge Functions deployment path via dashboard
+- [x] T001 Initialize Vite + React 19 + TypeScript project with Tailwind CSS and shadcn/ui in project root
+- [x] T002 Configure ESLint, Prettier, and TypeScript strict mode in eslint.config.js, .prettierrc, tsconfig.json
+- [x] T003 [P] Install core dependencies: @supabase/supabase-js, @anthropic-ai/sdk, react-router-dom, date-fns, recharts, @tanstack/react-query
+- [x] T004 [P] Create .env.example with all required environment variables per specs/001-social-media-wizard/quickstart.md
+- [x] T005 [P] Create Vercel configuration in vercel.json with serverless function routing for api/ directory
+- [x] T006 [P] Create Supabase project via dashboard (not CLI): document project URL and anon key in .env.example, verify Edge Functions deployment path via dashboard
 
 ---
 
