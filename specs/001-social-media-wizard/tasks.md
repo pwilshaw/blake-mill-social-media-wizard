@@ -60,19 +60,19 @@
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Create MetricCard component in src/components/dashboard/MetricCard.tsx (impressions, clicks, spend, conversions, ROI — each with trend indicator)
-- [ ] T019 [P] [US1] Create PerformanceChart component in src/components/dashboard/PerformanceChart.tsx (line/area chart using recharts for spend, engagement, and conversions over time)
-- [ ] T020 [P] [US1] Create CampaignStatusBadge component in src/components/campaigns/CampaignStatusBadge.tsx (draft, scheduled, active, paused, completed, cancelled — colour-coded)
-- [ ] T021 [US1] Create useDashboard hook in src/hooks/useDashboard.ts (fetches aggregated metrics from dashboard/metrics Edge Function, subscribes to Realtime updates)
-- [ ] T022 [US1] Create dashboard metrics Edge Function in supabase/functions/dashboard/index.ts (aggregates PerformanceSnapshot + SpendLog data by period: today, 7d, 30d, custom)
-- [ ] T023 [P] [US1] Create CalendarView component in src/components/calendar/CalendarView.tsx (month view with campaign blocks colour-coded by status, clickable to campaign detail)
-- [ ] T024 [P] [US1] Create TimelineView component in src/components/calendar/TimelineView.tsx (horizontal timeline with campaign bars, overlap indicators, performance trend sparklines)
-- [ ] T025 [US1] Create useCampaigns hook in src/hooks/useCampaigns.ts (CRUD operations, status filtering, date range queries via Supabase client)
-- [ ] T026 [US1] Create campaigns Edge Function in supabase/functions/campaigns/index.ts (GET list with filters, GET detail with metrics, POST create draft, PATCH update, DELETE cancel)
-- [ ] T027 [US1] Create CampaignDetailPanel component in src/components/campaigns/CampaignDetailPanel.tsx (shows real-time engagement, spend vs budget, AI performance rating 1-10 with commentary)
-- [ ] T028 [US1] Create Dashboard page in src/pages/Dashboard.tsx (MetricCards row, PerformanceChart, toggle between CalendarView and TimelineView, campaign list sidebar)
-- [ ] T029 [US1] Create Calendar page in src/pages/Calendar.tsx (full-page calendar/timeline with date range picker and channel filter)
-- [ ] T030 [US1] Create schedule Edge Function in supabase/functions/schedule/index.ts (GET scheduled posts by date range and channel for calendar data)
+- [x] T018 [P] [US1] Create MetricCard component in src/components/dashboard/MetricCard.tsx (impressions, clicks, spend, conversions, ROI — each with trend indicator)
+- [x] T019 [P] [US1] Create PerformanceChart component in src/components/dashboard/PerformanceChart.tsx (line/area chart using recharts for spend, engagement, and conversions over time)
+- [x] T020 [P] [US1] Create CampaignStatusBadge component in src/components/campaigns/CampaignStatusBadge.tsx (draft, scheduled, active, paused, completed, cancelled — colour-coded)
+- [x] T021 [US1] Create useDashboard hook in src/hooks/useDashboard.ts (fetches aggregated metrics from dashboard/metrics Edge Function, subscribes to Realtime updates)
+- [x] T022 [US1] Create dashboard metrics Edge Function in supabase/functions/dashboard/index.ts (aggregates PerformanceSnapshot + SpendLog data by period: today, 7d, 30d, custom)
+- [x] T023 [P] [US1] Create CalendarView component in src/components/calendar/CalendarView.tsx (month view with campaign blocks colour-coded by status, clickable to campaign detail)
+- [x] T024 [P] [US1] Create TimelineView component in src/components/calendar/TimelineView.tsx (horizontal timeline with campaign bars, overlap indicators, performance trend sparklines)
+- [x] T025 [US1] Create useCampaigns hook in src/hooks/useCampaigns.ts (CRUD operations, status filtering, date range queries via Supabase client)
+- [x] T026 [US1] Create campaigns Edge Function in supabase/functions/campaigns/index.ts (GET list with filters, GET detail with metrics, POST create draft, PATCH update, DELETE cancel)
+- [x] T027 [US1] Create CampaignDetailPanel component in src/components/campaigns/CampaignDetailPanel.tsx (shows real-time engagement, spend vs budget, AI performance rating 1-10 with commentary)
+- [x] T028 [US1] Create Dashboard page in src/pages/Dashboard.tsx (MetricCards row, PerformanceChart, toggle between CalendarView and TimelineView, campaign list sidebar)
+- [x] T029 [US1] Create Calendar page in src/pages/Calendar.tsx (full-page calendar/timeline with date range picker and channel filter)
+- [x] T030 [US1] Create schedule Edge Function in supabase/functions/schedule/index.ts (GET scheduled posts by date range and channel for calendar data)
 
 **Checkpoint**: Dashboard shows metrics and campaigns. Calendar/timeline navigable. All with seed or mock data. MVP deliverable.
 
