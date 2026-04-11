@@ -106,13 +106,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Create Vercel serverless image compositing function in api/generate-image/index.ts (accepts product image URL + overlay text + brand colours + aspect ratio; uses sharp to composite; returns generated image URL)
-- [ ] T039 [P] [US3] Create CreativeGallery component in src/components/creatives/CreativeGallery.tsx (grid of generated images with approve/reject/modify per slide, carousel preview with swipe)
-- [ ] T040 [P] [US3] Create CarouselPreview component in src/components/creatives/CarouselPreview.tsx (simulates platform-specific carousel display: Facebook multi-image, Instagram swipe)
-- [ ] T041 [US3] Create generate-creatives Edge Function in supabase/functions/generate-creatives/index.ts (accepts content_variant_id + aspect_ratios; fetches shirt's Shopify images; calls Vercel image function for each slide; stores CreativeAsset records)
-- [ ] T042 [US3] Create CreativeGallery page in src/pages/CreativeGallery.tsx (select campaign, view all creative assets, filter by aspect ratio and approval status, bulk approve)
-- [ ] T043 [US3] Create Shopify product sync Edge Function in supabase/functions/webhooks/shopify/index.ts (handles product/update and inventory_levels/update webhooks; verifies HMAC signature; upserts ShirtProduct records)
-- [ ] T044 [US3] Create manual Shopify sync Edge Function in supabase/functions/sync-shopify/index.ts (fetches all products via Shopify GraphQL Admin API; upserts ShirtProduct table; called on-demand or daily cron)
+- [x] T038 [P] [US3] Create Vercel serverless image compositing function in api/generate-image/index.ts (accepts product image URL + overlay text + brand colours + aspect ratio; uses sharp to composite; returns generated image URL)
+- [x] T039 [P] [US3] Create CreativeGallery component in src/components/creatives/CreativeGallery.tsx (grid of generated images with approve/reject/modify per slide, carousel preview with swipe)
+- [x] T040 [P] [US3] Create CarouselPreview component in src/components/creatives/CarouselPreview.tsx (simulates platform-specific carousel display: Facebook multi-image, Instagram swipe)
+- [x] T041 [US3] Create generate-creatives Edge Function in supabase/functions/generate-creatives/index.ts (accepts content_variant_id + aspect_ratios; fetches shirt's Shopify images; calls Vercel image function for each slide; stores CreativeAsset records)
+- [x] T042 [US3] Create CreativeGallery page in src/pages/CreativeGallery.tsx (select campaign, view all creative assets, filter by aspect ratio and approval status, bulk approve)
+- [x] T043 [US3] Create Shopify product sync Edge Function in supabase/functions/webhooks/shopify/index.ts (handles product/update and inventory_levels/update webhooks; verifies HMAC signature; upserts ShirtProduct records)
+- [x] T044 [US3] Create manual Shopify sync Edge Function in supabase/functions/sync-shopify/index.ts (fetches all products via Shopify GraphQL Admin API; upserts ShirtProduct table; called on-demand or daily cron)
 
 **Checkpoint**: Can fetch Shopify products, generate branded carousel images, review in gallery, approve for publishing.
 
