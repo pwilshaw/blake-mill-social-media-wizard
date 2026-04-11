@@ -34,19 +34,19 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Create shared TypeScript types from data model in src/lib/types.ts (all 13 entities: ShirtProduct, Campaign, ContentVariant, CreativeAsset, ChannelAccount, ChannelPost, CustomerSegment, ContextualTrigger, BudgetRule, EngagementReply, PerformanceSnapshot, SpendLog, plus enums)
-- [ ] T008 Create Supabase database migration for all tables in supabase/migrations/001_initial_schema.sql (ShirtProduct, Campaign, ContentVariant, CreativeAsset, ChannelAccount, ChannelPost, CustomerSegment, ContextualTrigger, BudgetRule, EngagementReply, PerformanceSnapshot, SpendLog with all foreign keys, enums, indexes)
-- [ ] T009 Create Row Level Security policies in supabase/migrations/002_rls_policies.sql (single owner — allow all operations for authenticated user)
-- [ ] T009b [P] Configure Supabase Auth for single-owner access: enable email/password provider in Supabase dashboard, create owner account, add auth helper in src/lib/auth.ts (login, logout, session check), add ProtectedRoute wrapper in src/components/ui/ProtectedRoute.tsx
-- [ ] T010 [P] Configure Supabase client in src/lib/supabase.ts with typed client using generated types
-- [ ] T011 [P] Create API client utility in src/lib/api.ts for calling Supabase Edge Functions with error handling
-- [ ] T012 [P] Create utility functions in src/lib/utils.ts (currency formatting, date formatting, percentage calc, status colour mapping)
-- [ ] T013 Create app shell layout with sidebar navigation in src/components/ui/AppLayout.tsx (links to: Dashboard, Campaigns, Calendar, Channels, Segments, Triggers, Budget, Engagement)
-- [ ] T013b Fetch Blake Mill design tokens from MCP server (https://preview--designtokensforhumans.lovable.app/api/mcp) and create src/lib/blake-mill-tokens.ts mapping token values to Tailwind CSS custom properties. Reference these tokens in tailwind.config.ts theme extension.
-- [ ] T014 Configure React Router with all page routes in src/App.tsx
-- [ ] T015 [P] Create AppContext provider in src/contexts/AppContext.tsx (active channels, budget status, global loading states)
-- [ ] T016 [P] Create useRealtime hook in src/hooks/useRealtime.ts for Supabase Realtime subscriptions
-- [ ] T017 Create seed data migration in supabase/seed.sql (sample trigger templates for weather/events, default budget rules)
+- [x] T007 Create shared TypeScript types from data model in src/lib/types.ts (all 13 entities: ShirtProduct, Campaign, ContentVariant, CreativeAsset, ChannelAccount, ChannelPost, CustomerSegment, ContextualTrigger, BudgetRule, EngagementReply, PerformanceSnapshot, SpendLog, plus enums)
+- [x] T008 Create Supabase database migration for all tables in supabase/migrations/001_initial_schema.sql (ShirtProduct, Campaign, ContentVariant, CreativeAsset, ChannelAccount, ChannelPost, CustomerSegment, ContextualTrigger, BudgetRule, EngagementReply, PerformanceSnapshot, SpendLog with all foreign keys, enums, indexes)
+- [x] T009 Create Row Level Security policies in supabase/migrations/002_rls_policies.sql (single owner — allow all operations for authenticated user)
+- [x] T009b [P] Configure Supabase Auth for single-owner access: enable email/password provider in Supabase dashboard, create owner account, add auth helper in src/lib/auth.ts (login, logout, session check), add ProtectedRoute wrapper in src/components/ui/ProtectedRoute.tsx
+- [x] T010 [P] Configure Supabase client in src/lib/supabase.ts with typed client using generated types
+- [x] T011 [P] Create API client utility in src/lib/api.ts for calling Supabase Edge Functions with error handling
+- [x] T012 [P] Create utility functions in src/lib/utils.ts (currency formatting, date formatting, percentage calc, status colour mapping)
+- [x] T013 Create app shell layout with sidebar navigation in src/components/ui/AppLayout.tsx (links to: Dashboard, Campaigns, Calendar, Channels, Segments, Triggers, Budget, Engagement)
+- [x] T013b Fetch Blake Mill design tokens from MCP server (https://preview--designtokensforhumans.lovable.app/api/mcp) and create src/lib/blake-mill-tokens.ts mapping token values to Tailwind CSS custom properties. Reference these tokens in tailwind.config.ts theme extension.
+- [x] T014 Configure React Router with all page routes in src/App.tsx
+- [x] T015 [P] Create AppContext provider in src/contexts/AppContext.tsx (active channels, budget status, global loading states)
+- [x] T016 [P] Create useRealtime hook in src/hooks/useRealtime.ts for Supabase Realtime subscriptions
+- [x] T017 Create seed data migration in supabase/seed.sql (sample trigger templates for weather/events, default budget rules)
 
 **Checkpoint**: Foundation ready — database schema deployed, app shell navigable, Supabase connected. User story implementation can now begin.
 
