@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+App
+Rouges
+Shirts
+Screenshots
+Figures
+Data
+Feedback forms
+*.zip
+*.png
+*.xlsx
+*.xls
+*.csv
+.env
+.env.local
