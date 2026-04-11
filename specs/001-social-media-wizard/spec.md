@@ -164,7 +164,7 @@ As the Blake Mill owner, I want to be able to add additional social media channe
 - **FR-014**: System MUST automatically generate contextually appropriate, witty replies to post comments with soft product nudges
 - **FR-015**: System MUST flag negative, inappropriate, or ambiguous comments for manual review rather than auto-replying
 - **FR-016**: System MUST support adding multiple social media channels and accounts with platform-specific content adaptation
-- **FR-017**: System MUST present generated content (copy and visuals) for approval before publishing — no content goes live without owner sign-off
+- **FR-017**: System MUST present generated content (copy and visuals) for approval before publishing by default. However, the owner can pre-approve content templates and trigger rules so that matching campaigns (e.g., weather-triggered, event-triggered) auto-publish within defined guardrails (budget cap, approved shirt + copy style). Auto-published content is flagged for post-publish review.
 - **FR-018**: System MUST never promote out-of-stock products
 - **FR-019**: System MUST log all ad spend with date, campaign, channel, and amount for cost tracking
 - **FR-020**: System MUST use existing Blake Mill design system tokens and components for its own UI
@@ -194,6 +194,12 @@ As the Blake Mill owner, I want to be able to add additional social media channe
 - **SC-008**: Customer survey insights are reflected in targeting — campaigns sent to "subtle print" preference segments never feature bold designs, and vice versa
 - **SC-009**: Dashboard loads and displays current metrics within 3 seconds
 - **SC-010**: System supports at least 2 social media channels simultaneously within 3 months of launch
+
+## Clarifications
+
+### Session 2026-04-11
+
+- Q: Should all content require manual approval, or can trigger-based campaigns auto-publish? → A: Manual approval by default; pre-approved templates can auto-publish for trigger-based campaigns within guardrails.
 
 ## Assumptions
 
