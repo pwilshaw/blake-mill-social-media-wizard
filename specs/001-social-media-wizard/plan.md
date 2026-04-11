@@ -13,7 +13,7 @@ Build a fully automated social media campaign management application for Blake M
 **Primary Dependencies**: React 19, Vite, Tailwind CSS, shadcn/ui, @supabase/supabase-js, @anthropic-ai/sdk  
 **Storage**: Supabase (PostgreSQL) for all application data, Supabase Vault for API secrets  
 **Testing**: Vitest (unit + integration), Playwright (E2E)  
-**Target Platform**: Web application (desktop-first, responsive)  
+**Target Platform**: Web application (mobile-first responsive, desktop-optimised)  
 **Project Type**: Web application (React frontend + Supabase Edge Functions backend)  
 **Performance Goals**: Dashboard loads in < 3 seconds, content generation < 60 seconds per variant  
 **Constraints**: Ad spend must never exceed user-defined limits, no content published without approval (unless pre-approved template)  

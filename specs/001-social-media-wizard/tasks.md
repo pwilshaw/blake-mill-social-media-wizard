@@ -24,7 +24,7 @@
 - [ ] T003 [P] Install core dependencies: @supabase/supabase-js, @anthropic-ai/sdk, react-router-dom, date-fns, recharts, @tanstack/react-query
 - [ ] T004 [P] Create .env.example with all required environment variables per specs/001-social-media-wizard/quickstart.md
 - [ ] T005 [P] Create Vercel configuration in vercel.json with serverless function routing for api/ directory
-- [ ] T006 [P] Create Supabase project configuration in supabase/config.toml
+- [ ] T006 [P] Create Supabase project via dashboard (not CLI): document project URL and anon key in .env.example, verify Edge Functions deployment path via dashboard
 
 ---
 
@@ -37,10 +37,12 @@
 - [ ] T007 Create shared TypeScript types from data model in src/lib/types.ts (all 13 entities: ShirtProduct, Campaign, ContentVariant, CreativeAsset, ChannelAccount, ChannelPost, CustomerSegment, ContextualTrigger, BudgetRule, EngagementReply, PerformanceSnapshot, SpendLog, plus enums)
 - [ ] T008 Create Supabase database migration for all tables in supabase/migrations/001_initial_schema.sql (ShirtProduct, Campaign, ContentVariant, CreativeAsset, ChannelAccount, ChannelPost, CustomerSegment, ContextualTrigger, BudgetRule, EngagementReply, PerformanceSnapshot, SpendLog with all foreign keys, enums, indexes)
 - [ ] T009 Create Row Level Security policies in supabase/migrations/002_rls_policies.sql (single owner — allow all operations for authenticated user)
+- [ ] T009b [P] Configure Supabase Auth for single-owner access: enable email/password provider in Supabase dashboard, create owner account, add auth helper in src/lib/auth.ts (login, logout, session check), add ProtectedRoute wrapper in src/components/ui/ProtectedRoute.tsx
 - [ ] T010 [P] Configure Supabase client in src/lib/supabase.ts with typed client using generated types
 - [ ] T011 [P] Create API client utility in src/lib/api.ts for calling Supabase Edge Functions with error handling
 - [ ] T012 [P] Create utility functions in src/lib/utils.ts (currency formatting, date formatting, percentage calc, status colour mapping)
 - [ ] T013 Create app shell layout with sidebar navigation in src/components/ui/AppLayout.tsx (links to: Dashboard, Campaigns, Calendar, Channels, Segments, Triggers, Budget, Engagement)
+- [ ] T013b Fetch Blake Mill design tokens from MCP server (https://preview--designtokensforhumans.lovable.app/api/mcp) and create src/lib/blake-mill-tokens.ts mapping token values to Tailwind CSS custom properties. Reference these tokens in tailwind.config.ts theme extension.
 - [ ] T014 Configure React Router with all page routes in src/App.tsx
 - [ ] T015 [P] Create AppContext provider in src/contexts/AppContext.tsx (active channels, budget status, global loading states)
 - [ ] T016 [P] Create useRealtime hook in src/hooks/useRealtime.ts for Supabase Realtime subscriptions
@@ -86,11 +88,11 @@
 
 - [ ] T031 [P] [US2] Create DEPTH method system prompt template in src/lib/depth-prompts.ts (three expert roles: behavioural psychologist, direct response copywriter, data analyst; self-scoring instructions; uncertain claim flagging)
 - [ ] T032 [P] [US2] Create ContentVariantCard component in src/components/content/ContentVariantCard.tsx (displays copy, hashtags, CTA, DEPTH scores as 4 radial gauges, uncertain claims highlighted, approve/reject/revise buttons)
-- [ ] T033 [US2] Create generate-content Edge Function in supabase/functions/generate-content/index.ts (accepts campaign_id + shirt_ids + platform; calls Claude API with DEPTH prompt; returns ContentVariant[] with scores; auto-improves any dimension < 8 before returning)
+- [ ] T033 [US2] Create generate-content Edge Function in supabase/functions/generate-content/index.ts (accepts campaign_id + shirt_ids + platform; validates all shirts are in_stock — rejects out-of-stock with error; calls Claude API with DEPTH prompt; returns ContentVariant[] with scores; auto-improves any dimension < 8 before returning)
 - [ ] T034 [US2] Create ContentReview page in src/pages/ContentReview.tsx (select campaign, view all generated variants in grid, bulk approve/reject, filter by platform and score)
 - [ ] T035 [US2] Create content-variants Edge Function in supabase/functions/content-variants/index.ts (PATCH approval_status, GET variants by campaign with filtering)
 - [ ] T036 [US2] Create Campaigns page in src/pages/Campaigns.tsx (list all campaigns, create new draft, select shirts from Shopify catalogue, trigger content generation, link to ContentReview)
-- [ ] T037 [US2] Create CampaignWizard component in src/components/campaigns/CampaignWizard.tsx (step-by-step: select shirts → choose channels → set schedule → set budget → generate content → review → approve → schedule)
+- [ ] T037 [US2] Create CampaignWizard component in src/components/campaigns/CampaignWizard.tsx (step-by-step: select shirts from Shopify catalogue — out-of-stock greyed out and unselectable → choose channels → set schedule → set budget → generate content → review → approve → schedule)
 
 **Checkpoint**: Can generate DEPTH method content for shirts, review scores, approve/reject variants. Campaign creation wizard functional.
 
@@ -124,10 +126,12 @@
 
 ### Implementation for User Story 4
 
-- [ ] T045 [P] [US4] Create TriggerRuleBuilder component in src/components/triggers/TriggerRuleBuilder.tsx (form for: trigger type selection, weather conditions with temp/condition inputs, event keyword matching, holiday selection, shirt mapping, cooldown hours, auto-approve toggle)
+- [ ] T045 [P] [US4] Create TriggerRuleBuilder component in src/components/triggers/TriggerRuleBuilder.tsx (form for: trigger type selection, weather conditions with temp/condition inputs, event keyword matching, holiday selection, shirt mapping, cooldown hours, auto-approve toggle, content template selection for auto-publish)
 - [ ] T046 [P] [US4] Create WeatherCard component in src/components/triggers/WeatherCard.tsx (displays current 7-day forecast with trigger match indicators)
 - [ ] T047 [P] [US4] Create EventFeed component in src/components/triggers/EventFeed.tsx (lists detected events from PredictHQ + Ticketmaster with relevance scores and matched triggers)
 - [ ] T048 [US4] Create triggers CRUD Edge Function in supabase/functions/triggers/index.ts (GET/POST/PATCH/DELETE for ContextualTrigger records)
+- [ ] T048b [P] [US4] Create ContentTemplate CRUD Edge Function in supabase/functions/content-templates/index.ts (GET/POST/PATCH/DELETE for pre-approved content templates with placeholder support)
+- [ ] T048c [P] [US4] Create TemplateEditor component in src/components/triggers/TemplateEditor.tsx (edit copy/hashtag/CTA templates with {shirt_name}, {weather}, {event} placeholders, preview with sample data)
 - [ ] T049 [US4] Create weather check cron Edge Function in supabase/functions/cron/weather-check/index.ts (calls WeatherAPI for UK forecast, evaluates all active weather triggers, creates draft or auto-approved campaigns for matches, respects cooldown_hours)
 - [ ] T050 [US4] Create event check cron Edge Function in supabase/functions/cron/event-check/index.ts (calls PredictHQ + Ticketmaster APIs, matches events to trigger keywords, creates campaigns for matches)
 - [ ] T051 [US4] Create Triggers page in src/pages/Triggers.tsx (list active triggers, create/edit via TriggerRuleBuilder, show recent trigger firings, weather forecast panel, event feed)
@@ -170,7 +174,7 @@
 - [ ] T062 [US6] Create channels OAuth Edge Function in supabase/functions/channels/index.ts (GET list, POST connect initiates Meta OAuth, POST callback exchanges code for token and stores in Vault, DELETE disconnect)
 - [ ] T063 [US6] Create publish Edge Function in supabase/functions/publish/index.ts (POST publishes approved ContentVariant to Meta Graph API v22.0 via page access token; creates ChannelPost record; handles scheduled_at for future posts)
 - [ ] T064 [US6] Create budgets CRUD Edge Function in supabase/functions/budgets/index.ts (GET/POST/PATCH BudgetRule records; GET spend-log with filters)
-- [ ] T065 [US6] Create metrics sync cron Edge Function in supabase/functions/cron/metrics-sync/index.ts (every 15 min: fetches post insights from Meta API, updates ChannelPost metrics, creates PerformanceSnapshot, checks budget limits and auto-pauses if exceeded)
+- [ ] T065 [US6] Create metrics sync cron Edge Function in supabase/functions/cron/metrics-sync/index.ts (every 15 min: fetches post insights from Meta API, updates ChannelPost metrics, creates PerformanceSnapshot, writes SpendLog entries for each spend delta per campaign + channel, checks budget limits and auto-pauses if exceeded)
 - [ ] T066 [US6] Create AI performance rating Edge Function in supabase/functions/campaigns/rate-performance/index.ts (calls Claude API with campaign metrics + comment data, generates honest 1-10 rating with commentary)
 - [ ] T067 [US6] Create Channels page in src/pages/Channels.tsx (connected accounts list, add channel flow, per-channel settings)
 - [ ] T068 [US6] Create Budget page in src/pages/Budget.tsx (budget rules list, editor, spend tracker, spend log table)
@@ -233,6 +237,7 @@
 - [ ] T090 Add daily Shopify sync cron Edge Function in supabase/functions/cron/shopify-sync/index.ts (calls sync-shopify function, marks out-of-stock products)
 - [ ] T091 Add weekly performance summary cron Edge Function in supabase/functions/cron/weekly-summary/index.ts (generates AI summary of all campaign performance, stores as PerformanceSnapshot)
 - [ ] T092 Security hardening: validate all webhook signatures (Shopify HMAC, Meta X-Hub-Signature-256), sanitise user inputs, ensure API keys are in Supabase Vault only
+- [ ] T092b Create API client retry wrapper in src/lib/api-retry.ts (exponential backoff with jitter for Meta, Shopify, Klaviyo, WeatherAPI, PredictHQ calls; max 3 retries; alert owner if retries exhausted; apply to all Edge Functions making external API calls)
 - [ ] T093 Run quickstart.md validation: follow all steps in specs/001-social-media-wizard/quickstart.md from scratch, fix any discrepancies
 
 ---
@@ -343,4 +348,4 @@ Task: T024 "Create TimelineView in src/components/calendar/TimelineView.tsx"
 - Each user story should be independently completable and testable
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- Total tasks: 93
+- Total tasks: 99

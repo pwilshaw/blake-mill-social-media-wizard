@@ -7,7 +7,7 @@
 
 ```
 ShirtProduct (synced from Shopify)
-  ├── has many → ContextualTag (weather, event, cultural mappings)
+  ├── contextual_tags[] → weather, event, cultural mappings (array field)
   ├── has many → ContentVariant (via Campaign)
   └── has many → Campaign (via CampaignShirt join)
 
@@ -64,6 +64,14 @@ Synced from Shopify. Read-only locally (Shopify is source of truth).
 | last_synced_at | Last Shopify sync timestamp | Not null |
 
 **State transitions**: stock_status changes based on Shopify webhook or periodic sync.
+
+### CampaignShirt (Join Table)
+
+| Field | Description | Constraints |
+|-------|-------------|-------------|
+| campaign_id | Parent campaign | Foreign key, not null, composite PK |
+| shirt_product_id | Linked shirt | Foreign key, not null, composite PK |
+| is_primary | Whether this is the hero shirt for the campaign | Boolean, default false |
 
 ### Campaign
 
@@ -186,6 +194,22 @@ Synced from Shopify. Read-only locally (Shopify is source of truth).
 | is_active | Whether trigger is enabled | Boolean, default true |
 | last_fired_at | Last time this trigger activated | Optional |
 | cooldown_hours | Minimum hours between firings | Integer, default 24 |
+
+### ContentTemplate
+
+Pre-approved content structure for auto-publish trigger campaigns (FR-017).
+
+| Field | Description | Constraints |
+|-------|-------------|-------------|
+| id | Primary key | Auto-generated |
+| name | Template name | Not null |
+| platform | Target platform | Enum, not null |
+| copy_template | Copy with placeholders (e.g., {shirt_name}, {weather}) | Not null |
+| hashtag_template | Default hashtags | Array of strings |
+| cta_template | CTA with placeholders | Optional |
+| style_preset | Creative style instructions for image compositing | Optional |
+| is_active | Whether available for trigger use | Boolean, default true |
+| created_at | Creation timestamp | Auto |
 
 ### BudgetRule
 
