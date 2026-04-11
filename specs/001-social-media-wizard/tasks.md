@@ -126,15 +126,15 @@
 
 ### Implementation for User Story 4
 
-- [ ] T045 [P] [US4] Create TriggerRuleBuilder component in src/components/triggers/TriggerRuleBuilder.tsx (form for: trigger type selection, weather conditions with temp/condition inputs, event keyword matching, holiday selection, shirt mapping, cooldown hours, auto-approve toggle, content template selection for auto-publish)
-- [ ] T046 [P] [US4] Create WeatherCard component in src/components/triggers/WeatherCard.tsx (displays current 7-day forecast with trigger match indicators)
-- [ ] T047 [P] [US4] Create EventFeed component in src/components/triggers/EventFeed.tsx (lists detected events from PredictHQ + Ticketmaster with relevance scores and matched triggers)
-- [ ] T048 [US4] Create triggers CRUD Edge Function in supabase/functions/triggers/index.ts (GET/POST/PATCH/DELETE for ContextualTrigger records)
-- [ ] T048b [P] [US4] Create ContentTemplate CRUD Edge Function in supabase/functions/content-templates/index.ts (GET/POST/PATCH/DELETE for pre-approved content templates with placeholder support)
-- [ ] T048c [P] [US4] Create TemplateEditor component in src/components/triggers/TemplateEditor.tsx (edit copy/hashtag/CTA templates with {shirt_name}, {weather}, {event} placeholders, preview with sample data)
-- [ ] T049 [US4] Create weather check cron Edge Function in supabase/functions/cron/weather-check/index.ts (calls WeatherAPI for UK forecast, evaluates all active weather triggers, creates draft or auto-approved campaigns for matches, respects cooldown_hours)
-- [ ] T050 [US4] Create event check cron Edge Function in supabase/functions/cron/event-check/index.ts (calls PredictHQ + Ticketmaster APIs, matches events to trigger keywords, creates campaigns for matches)
-- [ ] T051 [US4] Create Triggers page in src/pages/Triggers.tsx (list active triggers, create/edit via TriggerRuleBuilder, show recent trigger firings, weather forecast panel, event feed)
+- [x] T045 [P] [US4] Create TriggerRuleBuilder component in src/components/triggers/TriggerRuleBuilder.tsx (form for: trigger type selection, weather conditions with temp/condition inputs, event keyword matching, holiday selection, shirt mapping, cooldown hours, auto-approve toggle, content template selection for auto-publish)
+- [x] T046 [P] [US4] Create WeatherCard component in src/components/triggers/WeatherCard.tsx (displays current 7-day forecast with trigger match indicators)
+- [x] T047 [P] [US4] Create EventFeed component in src/components/triggers/EventFeed.tsx (lists detected events from PredictHQ + Ticketmaster with relevance scores and matched triggers)
+- [x] T048 [US4] Create triggers CRUD Edge Function in supabase/functions/triggers/index.ts (GET/POST/PATCH/DELETE for ContextualTrigger records)
+- [x] T048b [P] [US4] Create ContentTemplate CRUD Edge Function in supabase/functions/content-templates/index.ts (GET/POST/PATCH/DELETE for pre-approved content templates with placeholder support)
+- [x] T048c [P] [US4] Create TemplateEditor component in src/components/triggers/TemplateEditor.tsx (edit copy/hashtag/CTA templates with {shirt_name}, {weather}, {event} placeholders, preview with sample data)
+- [x] T049 [US4] Create weather check cron Edge Function in supabase/functions/cron/weather-check/index.ts (calls WeatherAPI for UK forecast, evaluates all active weather triggers, creates draft or auto-approved campaigns for matches, respects cooldown_hours)
+- [x] T050 [US4] Create event check cron Edge Function in supabase/functions/cron/event-check/index.ts (calls PredictHQ + Ticketmaster APIs, matches events to trigger keywords, creates campaigns for matches)
+- [x] T051 [US4] Create Triggers page in src/pages/Triggers.tsx (list active triggers, create/edit via TriggerRuleBuilder, show recent trigger firings, weather forecast panel, event feed)
 
 **Checkpoint**: Weather and event triggers configurable. Scheduler evaluates triggers on cron and creates campaigns. Manual and auto-approved paths working.
 
@@ -148,13 +148,13 @@
 
 ### Implementation for User Story 5
 
-- [ ] T052 [P] [US5] Create SurveyImporter component in src/components/segments/SurveyImporter.tsx (CSV file upload with drag-and-drop, column mapping preview, import progress, segment extraction summary)
-- [ ] T053 [P] [US5] Create SegmentCard component in src/components/segments/SegmentCard.tsx (displays segment name, member count, style preference, age range, top occasions, linked Klaviyo segment)
-- [ ] T054 [US5] Create survey import Edge Function in supabase/functions/segments/import-survey/index.ts (parses CSV, extracts age_range, style preference from boldness scores, purchase_intent, wear_occasions; creates/updates CustomerSegment records; maps to ShirtProduct style_boldness)
-- [ ] T055 [US5] Create Klaviyo sync Edge Function in supabase/functions/segments/sync-klaviyo/index.ts (fetches Klaviyo segments and profiles, maps to CustomerSegment records, upserts profile data)
-- [ ] T056 [US5] Create segments CRUD Edge Function in supabase/functions/segments/index.ts (GET list, GET detail with member profiles, POST manual segment, PATCH update)
-- [ ] T057 [US5] Create Segments page in src/pages/Segments.tsx (segment list with filters, survey import panel, Klaviyo sync button, segment detail with shirt recommendations)
-- [ ] T058 [US5] Update CampaignWizard in src/components/campaigns/CampaignWizard.tsx to add segment targeting step (select target segments, preview matched shirts based on style preferences, warn if bold shirt selected for subtle-preference segment)
+- [x] T052 [P] [US5] Create SurveyImporter component in src/components/segments/SurveyImporter.tsx (CSV file upload with drag-and-drop, column mapping preview, import progress, segment extraction summary)
+- [x] T053 [P] [US5] Create SegmentCard component in src/components/segments/SegmentCard.tsx (displays segment name, member count, style preference, age range, top occasions, linked Klaviyo segment)
+- [x] T054 [US5] Create survey import Edge Function in supabase/functions/segments/import-survey/index.ts (parses CSV, extracts age_range, style preference from boldness scores, purchase_intent, wear_occasions; creates/updates CustomerSegment records; maps to ShirtProduct style_boldness)
+- [x] T055 [US5] Create Klaviyo sync Edge Function in supabase/functions/segments/sync-klaviyo/index.ts (fetches Klaviyo segments and profiles, maps to CustomerSegment records, upserts profile data)
+- [x] T056 [US5] Create segments CRUD Edge Function in supabase/functions/segments/index.ts (GET list, GET detail with member profiles, POST manual segment, PATCH update)
+- [x] T057 [US5] Create Segments page in src/pages/Segments.tsx (segment list with filters, survey import panel, Klaviyo sync button, segment detail with shirt recommendations)
+- [x] T058 [US5] Update CampaignWizard in src/components/campaigns/CampaignWizard.tsx to add segment targeting step (select target segments, preview matched shirts based on style preferences, warn if bold shirt selected for subtle-preference segment)
 
 **Checkpoint**: Survey data imported, segments extracted, Klaviyo synced. Campaign targeting respects segment style preferences.
 
@@ -168,17 +168,17 @@
 
 ### Implementation for User Story 6
 
-- [ ] T059 [P] [US6] Create ChannelConnector component in src/components/channels/ChannelConnector.tsx (platform selection, OAuth initiation button, connection status, disconnect option)
-- [ ] T060 [P] [US6] Create BudgetRuleEditor component in src/components/budget/BudgetRuleEditor.tsx (scope: channel/campaign/global, period: daily/weekly/monthly, limit amount input, alert threshold slider, auto-pause toggle)
-- [ ] T061 [P] [US6] Create SpendTracker component in src/components/budget/SpendTracker.tsx (current spend vs limit bar chart, spend history line chart, alert indicators)
-- [ ] T062 [US6] Create channels OAuth Edge Function in supabase/functions/channels/index.ts (GET list, POST connect initiates Meta OAuth, POST callback exchanges code for token and stores in Vault, DELETE disconnect)
-- [ ] T063 [US6] Create publish Edge Function in supabase/functions/publish/index.ts (POST publishes approved ContentVariant to Meta Graph API v22.0 via page access token; creates ChannelPost record; handles scheduled_at for future posts)
-- [ ] T064 [US6] Create budgets CRUD Edge Function in supabase/functions/budgets/index.ts (GET/POST/PATCH BudgetRule records; GET spend-log with filters)
-- [ ] T065 [US6] Create metrics sync cron Edge Function in supabase/functions/cron/metrics-sync/index.ts (every 15 min: fetches post insights from Meta API, updates ChannelPost metrics, creates PerformanceSnapshot, writes SpendLog entries for each spend delta per campaign + channel, checks budget limits and auto-pauses if exceeded)
-- [ ] T066 [US6] Create AI performance rating Edge Function in supabase/functions/campaigns/rate-performance/index.ts (calls Claude API with campaign metrics + comment data, generates honest 1-10 rating with commentary)
-- [ ] T067 [US6] Create Channels page in src/pages/Channels.tsx (connected accounts list, add channel flow, per-channel settings)
-- [ ] T068 [US6] Create Budget page in src/pages/Budget.tsx (budget rules list, editor, spend tracker, spend log table)
-- [ ] T069 [US6] Create Meta webhook handler in supabase/functions/webhooks/meta/index.ts (verifies X-Hub-Signature-256, processes comment notifications for Engagement story)
+- [x] T059 [P] [US6] Create ChannelConnector component in src/components/channels/ChannelConnector.tsx (platform selection, OAuth initiation button, connection status, disconnect option)
+- [x] T060 [P] [US6] Create BudgetRuleEditor component in src/components/budget/BudgetRuleEditor.tsx (scope: channel/campaign/global, period: daily/weekly/monthly, limit amount input, alert threshold slider, auto-pause toggle)
+- [x] T061 [P] [US6] Create SpendTracker component in src/components/budget/SpendTracker.tsx (current spend vs limit bar chart, spend history line chart, alert indicators)
+- [x] T062 [US6] Create channels OAuth Edge Function in supabase/functions/channels/index.ts (GET list, POST connect initiates Meta OAuth, POST callback exchanges code for token and stores in Vault, DELETE disconnect)
+- [x] T063 [US6] Create publish Edge Function in supabase/functions/publish/index.ts (POST publishes approved ContentVariant to Meta Graph API v22.0 via page access token; creates ChannelPost record; handles scheduled_at for future posts)
+- [x] T064 [US6] Create budgets CRUD Edge Function in supabase/functions/budgets/index.ts (GET/POST/PATCH BudgetRule records; GET spend-log with filters)
+- [x] T065 [US6] Create metrics sync cron Edge Function in supabase/functions/cron/metrics-sync/index.ts (every 15 min: fetches post insights from Meta API, updates ChannelPost metrics, creates PerformanceSnapshot, writes SpendLog entries for each spend delta per campaign + channel, checks budget limits and auto-pauses if exceeded)
+- [x] T066 [US6] Create AI performance rating Edge Function in supabase/functions/campaigns/rate-performance/index.ts (calls Claude API with campaign metrics + comment data, generates honest 1-10 rating with commentary)
+- [x] T067 [US6] Create Channels page in src/pages/Channels.tsx (connected accounts list, add channel flow, per-channel settings)
+- [x] T068 [US6] Create Budget page in src/pages/Budget.tsx (budget rules list, editor, spend tracker, spend log table)
+- [x] T069 [US6] Create Meta webhook handler in supabase/functions/webhooks/meta/index.ts (verifies X-Hub-Signature-256, processes comment notifications for Engagement story)
 
 **Checkpoint**: Facebook connected, posts publishing, spend tracked, budget auto-pause working, AI performance ratings generated.
 
@@ -192,12 +192,12 @@
 
 ### Implementation for User Story 7
 
-- [ ] T070 [P] [US7] Create CommentCard component in src/components/engagement/CommentCard.tsx (displays comment text, author, sentiment badge, generated reply with edit field, send/skip/flag actions)
-- [ ] T071 [P] [US7] Create reply generation prompt in src/lib/engagement-prompts.ts (Blake Mill brand voice: witty, irreverent, never offensive; soft product nudge rules; sentiment classification; escalation criteria for negative/inappropriate)
-- [ ] T072 [US7] Create comment detection cron Edge Function in supabase/functions/cron/comment-check/index.ts (every hour: fetches new comments from Meta API for all published posts, classifies sentiment, generates replies via Claude API, stores EngagementReply records)
-- [ ] T073 [US7] Create engagement Edge Function in supabase/functions/engagement/index.ts (GET comments needing review filtered by status, PATCH reply — approve/edit/send/skip/flag)
-- [ ] T074 [US7] Create reply sender Edge Function in supabase/functions/engagement/send-reply/index.ts (posts approved reply to Meta Graph API as comment reply, updates EngagementReply status)
-- [ ] T075 [US7] Create Engagement page in src/pages/Engagement.tsx (pending review queue, flagged items tab, sent replies history, per-post comment thread view)
+- [x] T070 [P] [US7] Create CommentCard component in src/components/engagement/CommentCard.tsx (displays comment text, author, sentiment badge, generated reply with edit field, send/skip/flag actions)
+- [x] T071 [P] [US7] Create reply generation prompt in src/lib/engagement-prompts.ts (Blake Mill brand voice: witty, irreverent, never offensive; soft product nudge rules; sentiment classification; escalation criteria for negative/inappropriate)
+- [x] T072 [US7] Create comment detection cron Edge Function in supabase/functions/cron/comment-check/index.ts (every hour: fetches new comments from Meta API for all published posts, classifies sentiment, generates replies via Claude API, stores EngagementReply records)
+- [x] T073 [US7] Create engagement Edge Function in supabase/functions/engagement/index.ts (GET comments needing review filtered by status, PATCH reply — approve/edit/send/skip/flag)
+- [x] T074 [US7] Create reply sender Edge Function in supabase/functions/engagement/send-reply/index.ts (posts approved reply to Meta Graph API as comment reply, updates EngagementReply status)
+- [x] T075 [US7] Create Engagement page in src/pages/Engagement.tsx (pending review queue, flagged items tab, sent replies history, per-post comment thread view)
 
 **Checkpoint**: Comments detected, sentiment classified, witty replies generated, manual review queue functional, approved replies posted.
 
@@ -211,12 +211,12 @@
 
 ### Implementation for User Story 8
 
-- [ ] T076 [P] [US8] Create platform-specific content format configs in src/lib/platform-formats.ts (Facebook: post + link + carousel; Instagram: feed post + carousel + Stories + Reels; LinkedIn: post + article; TikTok: video description — aspect ratios, character limits, hashtag limits per platform)
-- [ ] T077 [P] [US8] Create ChannelSelector component in src/components/channels/ChannelSelector.tsx (multi-select channels for campaign, shows platform icons, format requirements per platform)
-- [ ] T078 [US8] Update generate-content Edge Function in supabase/functions/generate-content/index.ts to accept platform parameter and adapt DEPTH method output to platform-specific formats (character limits, hashtag strategies, CTA styles)
-- [ ] T079 [US8] Update generate-creatives Edge Function in supabase/functions/generate-creatives/index.ts to generate platform-specific aspect ratios (1:1 Instagram feed, 9:16 Stories/Reels, 16:9 Facebook/LinkedIn)
-- [ ] T080 [US8] Update CampaignWizard in src/components/campaigns/CampaignWizard.tsx to include ChannelSelector step with platform-specific content preview
-- [ ] T081 [US8] Update publish Edge Function in supabase/functions/publish/index.ts to route publishing to correct platform API based on ChannelAccount.platform (Instagram Graph API, LinkedIn API placeholder, TikTok placeholder)
+- [x] T076 [P] [US8] Create platform-specific content format configs in src/lib/platform-formats.ts (Facebook: post + link + carousel; Instagram: feed post + carousel + Stories + Reels; LinkedIn: post + article; TikTok: video description — aspect ratios, character limits, hashtag limits per platform)
+- [x] T077 [P] [US8] Create ChannelSelector component in src/components/channels/ChannelSelector.tsx (multi-select channels for campaign, shows platform icons, format requirements per platform)
+- [x] T078 [US8] Update generate-content Edge Function in supabase/functions/generate-content/index.ts to accept platform parameter and adapt DEPTH method output to platform-specific formats (character limits, hashtag strategies, CTA styles)
+- [x] T079 [US8] Update generate-creatives Edge Function in supabase/functions/generate-creatives/index.ts to generate platform-specific aspect ratios (1:1 Instagram feed, 9:16 Stories/Reels, 16:9 Facebook/LinkedIn)
+- [x] T080 [US8] Update CampaignWizard in src/components/campaigns/CampaignWizard.tsx to include ChannelSelector step with platform-specific content preview
+- [x] T081 [US8] Update publish Edge Function in supabase/functions/publish/index.ts to route publishing to correct platform API based on ChannelAccount.platform (Instagram Graph API, LinkedIn API placeholder, TikTok placeholder)
 
 **Checkpoint**: Multiple channels configurable, content adapts to platform formats, campaign wizard supports multi-channel selection.
 
@@ -226,19 +226,19 @@
 
 **Purpose**: Performance, security, accessibility, and final quality pass
 
-- [ ] T082 [P] Add loading skeletons to all pages in src/components/ui/Skeleton.tsx (dashboard metric cards, campaign list, calendar, content grid)
-- [ ] T083 [P] Add empty states to all list views in src/components/ui/EmptyState.tsx (no campaigns, no channels connected, no segments imported)
-- [ ] T084 [P] Add error boundary and toast notifications in src/components/ui/ErrorBoundary.tsx and src/components/ui/Toaster.tsx
-- [ ] T085 Implement responsive layout breakpoints across all pages (mobile sidebar → hamburger menu, stack metric cards vertically, full-width calendar on mobile)
-- [ ] T086 Add keyboard navigation and focus management to CampaignWizard, ContentReview, and CreativeGallery components
-- [ ] T087 [P] Add ARIA labels and roles to dashboard widgets, calendar events, and interactive components per WCAG AA
-- [ ] T088 [P] Implement dark mode and high-contrast mode using design system tokens across all components
-- [ ] T089 Add budget reset cron Edge Function in supabase/functions/cron/budget-reset/index.ts (daily: reset daily budgets; check weekly/monthly period boundaries)
-- [ ] T090 Add daily Shopify sync cron Edge Function in supabase/functions/cron/shopify-sync/index.ts (calls sync-shopify function, marks out-of-stock products)
-- [ ] T091 Add weekly performance summary cron Edge Function in supabase/functions/cron/weekly-summary/index.ts (generates AI summary of all campaign performance, stores as PerformanceSnapshot)
-- [ ] T092 Security hardening: validate all webhook signatures (Shopify HMAC, Meta X-Hub-Signature-256), sanitise user inputs, ensure API keys are in Supabase Vault only
-- [ ] T092b Create API client retry wrapper in src/lib/api-retry.ts (exponential backoff with jitter for Meta, Shopify, Klaviyo, WeatherAPI, PredictHQ calls; max 3 retries; alert owner if retries exhausted; apply to all Edge Functions making external API calls)
-- [ ] T093 Run quickstart.md validation: follow all steps in specs/001-social-media-wizard/quickstart.md from scratch, fix any discrepancies
+- [x] T082 [P] Add loading skeletons to all pages in src/components/ui/Skeleton.tsx (dashboard metric cards, campaign list, calendar, content grid)
+- [x] T083 [P] Add empty states to all list views in src/components/ui/EmptyState.tsx (no campaigns, no channels connected, no segments imported)
+- [x] T084 [P] Add error boundary and toast notifications in src/components/ui/ErrorBoundary.tsx and src/components/ui/Toaster.tsx
+- [x] T085 Implement responsive layout breakpoints across all pages (mobile sidebar → hamburger menu, stack metric cards vertically, full-width calendar on mobile)
+- [x] T086 Add keyboard navigation and focus management to CampaignWizard, ContentReview, and CreativeGallery components
+- [x] T087 [P] Add ARIA labels and roles to dashboard widgets, calendar events, and interactive components per WCAG AA
+- [x] T088 [P] Implement dark mode and high-contrast mode using design system tokens across all components
+- [x] T089 Add budget reset cron Edge Function in supabase/functions/cron/budget-reset/index.ts (daily: reset daily budgets; check weekly/monthly period boundaries)
+- [x] T090 Add daily Shopify sync cron Edge Function in supabase/functions/cron/shopify-sync/index.ts (calls sync-shopify function, marks out-of-stock products)
+- [x] T091 Add weekly performance summary cron Edge Function in supabase/functions/cron/weekly-summary/index.ts (generates AI summary of all campaign performance, stores as PerformanceSnapshot)
+- [x] T092 Security hardening: validate all webhook signatures (Shopify HMAC, Meta X-Hub-Signature-256), sanitise user inputs, ensure API keys are in Supabase Vault only
+- [x] T092b Create API client retry wrapper in src/lib/api-retry.ts (exponential backoff with jitter for Meta, Shopify, Klaviyo, WeatherAPI, PredictHQ calls; max 3 retries; alert owner if retries exhausted; apply to all Edge Functions making external API calls)
+- [x] T093 Run quickstart.md validation: follow all steps in specs/001-social-media-wizard/quickstart.md from scratch, fix any discrepancies
 
 ---
 
