@@ -22,7 +22,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .from('channel_accounts')
       .select('*')
       .eq('is_active', true)
-    if (data) setChannels(data)
+    setChannels(data ?? [])
   }
 
   async function refreshBudget() {
@@ -31,8 +31,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('scope', 'global')
       .limit(1)
-      .single()
-    if (data) setGlobalBudget(data)
+      .maybeSingle()
+    setGlobalBudget(data ?? null)
   }
 
   useEffect(() => {

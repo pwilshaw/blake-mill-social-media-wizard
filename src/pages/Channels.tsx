@@ -15,7 +15,7 @@ import type { ChannelAccount } from '@/lib/types'
 async function fetchChannels(): Promise<ChannelAccount[]> {
   const { data, error } = await supabase
     .from('channel_accounts')
-    .select('id, platform, account_name, account_id, token_expires_at, is_active, default_budget_limit, created_at')
+    .select('*')
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
@@ -191,6 +191,7 @@ export default function Channels() {
   const { data: accounts = [], isLoading, error } = useQuery({
     queryKey: ['channels'],
     queryFn: fetchChannels,
+    retry: false,
   })
 
   const { mutate: doDisconnect } = useMutation({
@@ -259,9 +260,12 @@ export default function Channels() {
         )}
 
         {error && (
-          <p className="text-sm text-destructive">
-            Failed to load channels: {error instanceof Error ? error.message : 'Unknown error'}
-          </p>
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
+            <p className="text-sm text-destructive">Load failed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              No channels connected yet. Connect your first platform below.
+            </p>
+          </div>
         )}
 
         {!isLoading && !hasAccounts && (
