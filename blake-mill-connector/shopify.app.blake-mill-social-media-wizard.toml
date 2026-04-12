@@ -14,7 +14,7 @@ include_config_on_deploy = true
 api_version = "2026-07"
 
 [access_scopes]
-scopes = "read_products,read_inventory,read_orders"
+scopes = "read_products,read_inventory,read_orders,read_customers,read_reports,read_marketing_events,read_product_listings"
 
 [auth]
 redirect_urls = [
