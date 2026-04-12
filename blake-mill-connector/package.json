@@ -1,0 +1,24 @@
+{
+  "name": "blake-mill-connector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lightweight Shopify app — connects any store to the Blake Mill Social Media Wizard",
+  "type": "module",
+  "scripts": {
+    "dev": "shopify app dev",
+    "build": "tsc",
+    "deploy": "shopify app deploy",
+    "config:link": "shopify app config link"
+  },
+  "dependencies": {
+    "@shopify/shopify-app-express": "^5.0.0",
+    "@shopify/shopify-api": "^11.0.0",
+    "express": "^4.21.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

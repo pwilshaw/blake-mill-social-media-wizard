@@ -1,0 +1,22 @@
+# Blake Mill Connector — Shopify App config
+# Links any Shopify store to the Social Media Wizard
+
+name = "Blake Mill Social Media Wizard"
+client_id = "5f539d5a96a401bfa8f4a53ec0c8e476"
+application_url = "https://blake-mill-social-media-wizard.vercel.app"
+embedded = false
+
+[access_scopes]
+scopes = "read_products,read_inventory,read_orders"
+
+[auth]
+redirect_urls = [
+  "https://blake-mill-social-media-wizard.vercel.app/auth/callback",
+  "https://lsslorfkwtmmgbhjtdto.supabase.co/functions/v1/shopify-auth"
+]
+
+[webhooks]
+api_version = "2024-10"
+
+[pos]
+embedded = false
