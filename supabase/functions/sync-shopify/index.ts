@@ -1,10 +1,11 @@
 // T044 — Sync Shopify Products (Deno Edge Function)
 // POST /functions/v1/sync-shopify
-// No request body needed.
+// Optional body: { shop_domain?: string }
 //
-// Fetches all products from Shopify GraphQL Admin API using:
-//   SHOPIFY_STORE_DOMAIN   (e.g. "blake-mill.myshopify.com")
-//   SHOPIFY_ADMIN_API_TOKEN
+// Fetches all products from Shopify GraphQL Admin API.
+// Token source (in priority order):
+//   1. shopify_stores table (OAuth app via Partners Dashboard)
+//   2. SHOPIFY_STORE_DOMAIN + SHOPIFY_ADMIN_API_TOKEN env vars (legacy fallback)
 //
 // Maps each product to a ShirtProduct record and upserts into Supabase.
 // Returns { synced_count, products } on success.
@@ -227,19 +228,59 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed. Use POST.' }, 405)
   }
 
-  const storeDomain = Deno.env.get('SHOPIFY_STORE_DOMAIN')
-  const adminApiToken = Deno.env.get('SHOPIFY_ADMIN_API_TOKEN')
-
-  if (!storeDomain || !adminApiToken) {
-    return jsonResponse(
-      { error: 'SHOPIFY_STORE_DOMAIN and SHOPIFY_ADMIN_API_TOKEN env vars are required.' },
-      500,
-    )
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  // Determine store domain from request body or env
+  let body: { shop_domain?: string } = {}
+  try {
+    body = await req.json()
+  } catch {
+    // No body is fine
+  }
+
+  let storeDomain = body.shop_domain ?? Deno.env.get('SHOPIFY_STORE_DOMAIN') ?? ''
+  let adminApiToken = ''
+
+  // Try to get token from shopify_stores table (OAuth app model)
+  if (storeDomain) {
+    const { data: store } = await client
+      .from('shopify_stores')
+      .select('access_token')
+      .eq('shop_domain', storeDomain)
+      .eq('is_active', true)
+      .single()
+
+    if (store?.access_token) {
+      adminApiToken = store.access_token
+    }
+  } else {
+    // No domain specified — grab the first active store
+    const { data: store } = await client
+      .from('shopify_stores')
+      .select('shop_domain, access_token')
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+
+    if (store) {
+      storeDomain = store.shop_domain
+      adminApiToken = store.access_token
+    }
+  }
+
+  // Fallback to env var (legacy direct admin token)
+  if (!adminApiToken) {
+    adminApiToken = Deno.env.get('SHOPIFY_ADMIN_API_TOKEN') ?? ''
+  }
+
+  if (!storeDomain || !adminApiToken) {
+    return jsonResponse(
+      { error: 'No Shopify store connected. Install the app via /shopify-auth or set SHOPIFY_STORE_DOMAIN + SHOPIFY_ADMIN_API_TOKEN env vars.' },
+      500,
+    )
+  }
 
   try {
     // -----------------------------------------------------------------------
