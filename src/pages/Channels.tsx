@@ -2,7 +2,8 @@
 // Lists connected channels with status. Add channel flow via ChannelConnector.
 // Per-channel settings (default budget limit).
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { ChannelConnector } from '@/components/channels/ChannelConnector'
@@ -181,8 +182,21 @@ function ChannelRow({ account }: { account: ChannelAccount }) {
 
 export default function Channels() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showConnector, setShowConnector] = useState(false)
   const [oauthError, setOauthError] = useState<string | null>(null)
+  const [shopifySuccess, setShopifySuccess] = useState<string | null>(null)
+
+  // Handle Shopify OAuth callback redirect
+  useEffect(() => {
+    if (searchParams.get('shopify') === 'connected') {
+      const shop = searchParams.get('shop') ?? 'your store'
+      setShopifySuccess(`Shopify store "${shop}" connected successfully.`)
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      // Clean up URL params
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams, queryClient])
 
   const { data: accounts = [], isLoading, error } = useQuery({
     queryKey: ['channels'],
@@ -195,9 +209,16 @@ export default function Channels() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['channels'] }),
   })
 
-  async function handleConnect(platform: string) {
+  async function handleConnect(platform: string, meta?: { shop_domain?: string }) {
     setOauthError(null)
     try {
+      // Shopify uses a direct redirect to the OAuth edge function
+      if (platform === 'shopify' && meta?.shop_domain) {
+        const shopifyAuthUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shopify-auth?shop=${encodeURIComponent(meta.shop_domain)}`
+        window.location.href = shopifyAuthUrl
+        return
+      }
+
       const { oauth_url } = await initiateOAuth(platform)
       window.location.href = oauth_url
     } catch (err) {
@@ -227,6 +248,19 @@ export default function Channels() {
           {showConnector ? 'Close' : 'Add channel'}
         </button>
       </div>
+
+      {/* Shopify success */}
+      {shopifySuccess && (
+        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <p className="text-sm text-emerald-800">{shopifySuccess}</p>
+          <button
+            onClick={() => setShopifySuccess(null)}
+            className="text-xs text-emerald-600 hover:text-emerald-800"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* OAuth error */}
       {oauthError && (
