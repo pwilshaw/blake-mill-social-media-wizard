@@ -52,6 +52,8 @@ Platform-specific requirements:
 - **instagram**: Visual-first caption, punchy opening line, emoji use appropriate, no clickable links in caption
 - **linkedin**: Professional tone, insight-led, slightly longer form, focus on quality/craftsmanship
 - **tiktok**: Hook in first 3 words, energetic, trend-aware, very short, strong CTA
+- **google_ads**: Headline max 30 chars, description max 90 chars, benefit-led, include keyword, strong CTA, no hashtags
+- **snapchat**: Ultra-short, casual/playful tone, first-person voice, swipe-up CTA, 1–2 sentences max
 
 ### Step 1 — Generate
 

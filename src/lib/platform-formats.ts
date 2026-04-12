@@ -99,4 +99,40 @@ export const PLATFORM_FORMATS: Record<Platform, PlatformDefinition> = {
       },
     ],
   },
+
+  google_ads: {
+    icon: 'search',
+    formats: [
+      {
+        name: 'Responsive Search Ad',
+        aspect_ratios: [],
+        character_limit: 90,
+        hashtag_limit: 0,
+      },
+      {
+        name: 'Display Ad',
+        aspect_ratios: ['1:1', '1.91:1', '4:5'],
+        character_limit: 90,
+        hashtag_limit: 0,
+      },
+    ],
+  },
+
+  snapchat: {
+    icon: 'ghost',
+    formats: [
+      {
+        name: 'Snap Ad',
+        aspect_ratios: ['9:16'],
+        character_limit: 200,
+        hashtag_limit: 3,
+      },
+      {
+        name: 'Story Ad',
+        aspect_ratios: ['9:16'],
+        character_limit: 200,
+        hashtag_limit: 3,
+      },
+    ],
+  },
 }

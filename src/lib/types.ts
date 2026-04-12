@@ -19,7 +19,7 @@ export type CampaignType =
   | 'holiday'
   | 'scheduled'
 
-export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok'
+export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'google_ads' | 'snapchat'
 
 export type ApprovalStatus =
   | 'pending'
@@ -263,4 +263,85 @@ export interface MetricTrend {
   value: number
   previous_value: number
   change_pct: number
+}
+
+// ============================================================
+// AI Media Buyer
+// ============================================================
+
+export type OptimizationGoal = 'roas' | 'cpa' | 'ctr' | 'conversions'
+
+export interface MediaBuyerConfig {
+  id: string
+  channel_account_id: string
+  optimization_goal: OptimizationGoal
+  target_roas: number | null
+  target_cpa: number | null
+  auto_adjust_bids: boolean
+  auto_expand_audiences: boolean
+  auto_reallocate_budget: boolean
+  is_active: boolean
+  last_optimized_at: string | null
+}
+
+export interface OptimizationAction {
+  id: string
+  config_id: string
+  action_type: 'bid_adjustment' | 'audience_expansion' | 'budget_reallocation' | 'pause_underperformer'
+  description: string
+  impact_estimate: string
+  applied: boolean
+  created_at: string
+}
+
+// ============================================================
+// Conversion Tracking
+// ============================================================
+
+export type AttributionModel = 'first_touch' | 'last_touch' | 'linear' | 'time_decay'
+
+export interface ConversionEvent {
+  id: string
+  campaign_id: string
+  channel_account_id: string
+  event_type: 'purchase' | 'add_to_cart' | 'view_product' | 'signup'
+  revenue: number
+  currency: string
+  attribution_model: AttributionModel
+  touchpoints: ConversionTouchpoint[]
+  converted_at: string
+}
+
+export interface ConversionTouchpoint {
+  channel: Platform
+  campaign_name: string
+  interaction_type: 'click' | 'view' | 'engagement'
+  timestamp: string
+  attribution_weight: number
+}
+
+export interface ConversionSummary {
+  total_conversions: number
+  total_revenue: number
+  roas: number
+  cpa: number
+  conversion_rate: number
+  by_channel: Record<Platform, { conversions: number; revenue: number; spend: number }>
+}
+
+// ============================================================
+// Quick Launch Templates
+// ============================================================
+
+export interface QuickLaunchTemplate {
+  id: string
+  name: string
+  description: string
+  campaign_type: CampaignType
+  default_channels: Platform[]
+  default_budget: number | null
+  default_duration_days: number
+  shirt_selection_mode: 'bestsellers' | 'new_arrivals' | 'manual' | 'ai_recommended'
+  content_template_id: string | null
+  is_active: boolean
 }

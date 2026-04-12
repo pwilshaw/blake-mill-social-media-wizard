@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { ChannelConnector } from '@/components/channels/ChannelConnector'
+import { PLATFORM_META } from '@/lib/platforms'
 import type { ChannelAccount } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
@@ -95,19 +96,14 @@ function ChannelRow({ account }: { account: ChannelAccount }) {
   })
 
   const expiry = tokenExpiryLabel(account.token_expires_at)
-  const PLATFORM_LABELS: Record<string, string> = {
-    facebook: 'Facebook',
-    instagram: 'Instagram',
-    linkedin: 'LinkedIn',
-    tiktok: 'TikTok',
-  }
+  const platformInfo = PLATFORM_META[account.platform] ?? { label: account.platform, color: 'text-foreground', bgColor: 'bg-muted' }
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-foreground">{account.account_name}</p>
-          <p className="text-xs text-muted-foreground capitalize">{PLATFORM_LABELS[account.platform] ?? account.platform}</p>
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${platformInfo.color} ${platformInfo.bgColor}`}>{platformInfo.label}</span>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
