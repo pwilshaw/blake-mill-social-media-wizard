@@ -1,7 +1,8 @@
 // T062 — Channels Edge Function (Multi-platform OAuth)
 // GET    /channels               — list connected channel accounts
-// POST   /channels/connect       — initiate OAuth for any platform (returns oauth_url)
-// POST   /channels/callback      — exchange code for token, store in Supabase
+// POST   /channels/connect       — initiate OAuth for any platform
+// POST   /channels/callback      — exchange code for token (JSON body)
+// GET    /channels/callback      — handle OAuth redirect from platform
 // DELETE /channels?id=<uuid>     — disconnect a channel account
 // GET    /channels/status        — which platforms have API keys configured
 
@@ -24,20 +25,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 // Platform OAuth configs
 // ---------------------------------------------------------------------------
 
-interface PlatformOAuthConfig {
-  platform: string
-  authUrl: string
-  tokenUrl: string
-  clientId: string
-  clientSecret: string
-  scopes: string
-  redirectUri: string
-  configured: boolean
-}
-
-function getPlatformConfigs(): Record<string, PlatformOAuthConfig> {
-  const baseRedirectUri = Deno.env.get('SUPABASE_URL') + '/functions/v1/channels/callback'
-
+function getPlatformConfigs(baseRedirectUri: string) {
   const metaAppId = Deno.env.get('META_APP_ID') ?? ''
   const metaAppSecret = Deno.env.get('META_APP_SECRET') ?? ''
   const googleClientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? ''
@@ -110,18 +98,21 @@ function getPlatformConfigs(): Record<string, PlatformOAuthConfig> {
       redirectUri: baseRedirectUri,
       configured: Boolean(linkedinClientId && linkedinClientSecret),
     },
-  }
+  } as Record<string, {
+    platform: string; authUrl: string; tokenUrl: string
+    clientId: string; clientSecret: string; scopes: string
+    redirectUri: string; configured: boolean
+  }>
 }
 
 // ---------------------------------------------------------------------------
-// Token exchange helpers (platform-specific quirks)
+// Token exchange helpers
 // ---------------------------------------------------------------------------
 
 async function exchangeMetaToken(
-  config: PlatformOAuthConfig,
+  config: { clientId: string; clientSecret: string; tokenUrl: string; redirectUri: string },
   code: string,
-): Promise<{ access_token: string; expires_in: number; account_id: string; account_name: string }> {
-  // Short-lived token
+) {
   const tokenUrl = new URL(config.tokenUrl)
   tokenUrl.searchParams.set('client_id', config.clientId)
   tokenUrl.searchParams.set('client_secret', config.clientSecret)
@@ -132,7 +123,6 @@ async function exchangeMetaToken(
   if (!tokenRes.ok) throw new Error(`Meta token exchange failed: ${await tokenRes.text()}`)
   const tokenData = await tokenRes.json()
 
-  // Exchange for long-lived token
   const longUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token')
   longUrl.searchParams.set('grant_type', 'fb_exchange_token')
   longUrl.searchParams.set('client_id', config.clientId)
@@ -143,22 +133,21 @@ async function exchangeMetaToken(
   if (!longRes.ok) throw new Error(`Meta long-lived token failed: ${await longRes.text()}`)
   const longData = await longRes.json()
 
-  // Get account identity
   const meRes = await fetch(`https://graph.facebook.com/v22.0/me?fields=id,name&access_token=${longData.access_token}`)
   const meData = await meRes.json()
 
   return {
     access_token: longData.access_token,
-    expires_in: longData.expires_in ?? 5184000, // 60 days
+    expires_in: longData.expires_in ?? 5184000,
     account_id: meData.id,
-    account_name: meData.name ?? config.platform,
+    account_name: meData.name ?? 'Facebook',
   }
 }
 
 async function exchangeStandardOAuth(
-  config: PlatformOAuthConfig,
+  config: { clientId: string; clientSecret: string; tokenUrl: string; redirectUri: string; platform: string },
   code: string,
-): Promise<{ access_token: string; expires_in: number; account_id: string; account_name: string }> {
+) {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
@@ -172,7 +161,6 @@ async function exchangeStandardOAuth(
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
   })
-
   if (!tokenRes.ok) throw new Error(`${config.platform} token exchange failed: ${await tokenRes.text()}`)
   const tokenData = await tokenRes.json()
 
@@ -185,19 +173,14 @@ async function exchangeStandardOAuth(
 }
 
 async function exchangeTikTokToken(
-  config: PlatformOAuthConfig,
+  config: { clientId: string; clientSecret: string; tokenUrl: string },
   code: string,
-): Promise<{ access_token: string; expires_in: number; account_id: string; account_name: string }> {
+) {
   const tokenRes = await fetch(config.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      app_id: config.clientId,
-      secret: config.clientSecret,
-      auth_code: code,
-    }),
+    body: JSON.stringify({ app_id: config.clientId, secret: config.clientSecret, auth_code: code }),
   })
-
   if (!tokenRes.ok) throw new Error(`TikTok token exchange failed: ${await tokenRes.text()}`)
   const result = await tokenRes.json()
   const data = result.data ?? result
@@ -208,6 +191,26 @@ async function exchangeTikTokToken(
     account_id: data.advertiser_id ?? crypto.randomUUID(),
     account_name: data.display_name ?? 'TikTok Ads',
   }
+}
+
+// ---------------------------------------------------------------------------
+// Route extraction — works regardless of how Supabase passes the URL
+// ---------------------------------------------------------------------------
+
+function extractSubPath(req: Request): string {
+  const url = new URL(req.url)
+  const pathname = url.pathname
+
+  // Supabase may pass /functions/v1/channels/... or just /channels/... or just /
+  // Try to extract the part after "channels"
+  const match = pathname.match(/\/channels(.*)/)
+  if (match) {
+    const rest = match[1] || '/'
+    return rest === '' ? '/' : rest
+  }
+
+  // Fallback: treat the whole path as the sub-path
+  return pathname === '' || pathname === '/' ? '/' : pathname
 }
 
 // ---------------------------------------------------------------------------
@@ -224,21 +227,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const client = createClient(supabaseUrl, serviceRoleKey)
 
   const url = new URL(req.url)
-  const pathSegments = url.pathname.replace(/^\/functions\/v1\/channels/, '').replace(/^\//, '')
-  const subPath = pathSegments ? `/${pathSegments}` : '/'
+  const subPath = extractSubPath(req)
 
-  const configs = getPlatformConfigs()
+  const callbackUri = `${supabaseUrl}/functions/v1/channels/callback`
+  const configs = getPlatformConfigs(callbackUri)
+  const appUrl = Deno.env.get('SHOPIFY_APP_URL') ?? 'https://blake-mill-social-media-wizard.vercel.app'
 
   try {
     // -------------------------------------------------------------------
-    // GET /status — which platforms have API keys configured
+    // GET /status
     // -------------------------------------------------------------------
     if (req.method === 'GET' && subPath === '/status') {
       const status: Record<string, boolean> = {}
       for (const [key, config] of Object.entries(configs)) {
         status[key] = config.configured
       }
-      // Shopify is configured via the connector app, check shopify_stores table
       const { count } = await client
         .from('shopify_stores')
         .select('*', { count: 'exact', head: true })
@@ -250,7 +253,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // -------------------------------------------------------------------
     // GET / — list channel accounts
     // -------------------------------------------------------------------
-    if (req.method === 'GET' && subPath === '/') {
+    if (req.method === 'GET' && (subPath === '/' || subPath === '')) {
       const { data, error } = await client
         .from('channel_accounts')
         .select('id, platform, account_name, account_id, token_expires_at, is_active, default_budget_limit, created_at')
@@ -261,7 +264,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // -------------------------------------------------------------------
-    // POST /connect — initiate OAuth for any platform
+    // POST /connect
     // -------------------------------------------------------------------
     if (req.method === 'POST' && subPath === '/connect') {
       let body: { platform?: string } = {}
@@ -284,7 +287,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       const state = `${platform}:${crypto.randomUUID()}`
 
-      // Build OAuth URL (platform-specific params)
       if (platform === 'tiktok') {
         const authUrl = new URL(config.authUrl)
         authUrl.searchParams.set('app_id', config.clientId)
@@ -300,7 +302,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       authUrl.searchParams.set('state', state)
       authUrl.searchParams.set('response_type', 'code')
 
-      // Google needs access_type for refresh token
       if (platform === 'google_ads') {
         authUrl.searchParams.set('access_type', 'offline')
         authUrl.searchParams.set('prompt', 'consent')
@@ -310,66 +311,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // -------------------------------------------------------------------
-    // POST /callback — exchange code for token, persist channel account
+    // GET /callback — browser redirect from OAuth provider
     // -------------------------------------------------------------------
-    if (req.method === 'POST' && subPath === '/callback') {
-      let body: { code?: string; platform?: string; state?: string } = {}
-      try { body = await req.json() } catch { return jsonResponse({ error: 'Invalid JSON body' }, 400) }
-
-      const { code, state } = body
-      // Extract platform from state (format: "platform:uuid")
-      const platform = body.platform ?? state?.split(':')[0] ?? 'facebook'
-
-      if (!code) return jsonResponse({ error: 'code is required' }, 422)
-
-      const config = configs[platform]
-      if (!config || !config.configured) {
-        return jsonResponse({ error: `${platform} is not configured` }, 422)
-      }
-
-      // Exchange code for token (platform-specific)
-      let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string }
-
-      if (platform === 'facebook' || platform === 'instagram') {
-        tokenResult = await exchangeMetaToken(config, code)
-      } else if (platform === 'tiktok') {
-        tokenResult = await exchangeTikTokToken(config, code)
-      } else {
-        tokenResult = await exchangeStandardOAuth(config, code)
-      }
-
-      const expiresAt = new Date(Date.now() + tokenResult.expires_in * 1000).toISOString()
-
-      const { data, error } = await client
-        .from('channel_accounts')
-        .upsert(
-          {
-            platform,
-            account_id: tokenResult.account_id,
-            account_name: tokenResult.account_name,
-            access_token: tokenResult.access_token,
-            token_expires_at: expiresAt,
-            is_active: true,
-          },
-          { onConflict: 'platform,account_id' }
-        )
-        .select('id, platform, account_name, account_id, is_active, token_expires_at')
-        .single()
-
-      if (error) return jsonResponse({ error: error.message }, 500)
-      return jsonResponse(data, 201)
-    }
-
-    // -------------------------------------------------------------------
-    // GET /callback — handle OAuth redirect (browser redirect from platform)
-    // -------------------------------------------------------------------
-    if (req.method === 'GET' && subPath === '/callback') {
+    if (req.method === 'GET' && subPath.startsWith('/callback')) {
       const code = url.searchParams.get('code')
       const state = url.searchParams.get('state') ?? ''
       const platform = state.split(':')[0] || 'facebook'
       const errorParam = url.searchParams.get('error')
-
-      const appUrl = Deno.env.get('SHOPIFY_APP_URL') ?? 'https://blake-mill-social-media-wizard.vercel.app'
 
       if (errorParam) {
         const errorDesc = url.searchParams.get('error_description') ?? errorParam
@@ -398,19 +346,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
         const expiresAt = new Date(Date.now() + tokenResult.expires_in * 1000).toISOString()
 
-        await client
-          .from('channel_accounts')
-          .upsert(
-            {
-              platform,
-              account_id: tokenResult.account_id,
-              account_name: tokenResult.account_name,
-              access_token: tokenResult.access_token,
-              token_expires_at: expiresAt,
-              is_active: true,
-            },
-            { onConflict: 'platform,account_id' }
-          )
+        await client.from('channel_accounts').upsert(
+          {
+            platform,
+            account_id: tokenResult.account_id,
+            account_name: tokenResult.account_name,
+            access_token: tokenResult.access_token,
+            token_expires_at: expiresAt,
+            is_active: true,
+          },
+          { onConflict: 'platform,account_id' }
+        )
 
         return Response.redirect(`${appUrl}/channels?connected=${platform}`, 302)
       } catch (err) {
@@ -420,22 +366,69 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // -------------------------------------------------------------------
-    // DELETE /?id=<uuid> — disconnect channel account
+    // POST /callback — JSON exchange (alternative)
+    // -------------------------------------------------------------------
+    if (req.method === 'POST' && subPath.startsWith('/callback')) {
+      let body: { code?: string; platform?: string; state?: string } = {}
+      try { body = await req.json() } catch { return jsonResponse({ error: 'Invalid JSON body' }, 400) }
+
+      const { code, state } = body
+      const platform = body.platform ?? state?.split(':')[0] ?? 'facebook'
+      if (!code) return jsonResponse({ error: 'code is required' }, 422)
+
+      const config = configs[platform]
+      if (!config || !config.configured) return jsonResponse({ error: `${platform} is not configured` }, 422)
+
+      let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string }
+      if (platform === 'facebook' || platform === 'instagram') {
+        tokenResult = await exchangeMetaToken(config, code)
+      } else if (platform === 'tiktok') {
+        tokenResult = await exchangeTikTokToken(config, code)
+      } else {
+        tokenResult = await exchangeStandardOAuth(config, code)
+      }
+
+      const expiresAt = new Date(Date.now() + tokenResult.expires_in * 1000).toISOString()
+      const { data, error } = await client.from('channel_accounts').upsert(
+        {
+          platform,
+          account_id: tokenResult.account_id,
+          account_name: tokenResult.account_name,
+          access_token: tokenResult.access_token,
+          token_expires_at: expiresAt,
+          is_active: true,
+        },
+        { onConflict: 'platform,account_id' }
+      ).select('id, platform, account_name, account_id, is_active, token_expires_at').single()
+
+      if (error) return jsonResponse({ error: error.message }, 500)
+      return jsonResponse(data, 201)
+    }
+
+    // -------------------------------------------------------------------
+    // DELETE /?id=<uuid>
     // -------------------------------------------------------------------
     if (req.method === 'DELETE') {
       const id = url.searchParams.get('id')
       if (!id) return jsonResponse({ error: 'id query param required' }, 400)
 
-      const { error } = await client
-        .from('channel_accounts')
-        .update({ is_active: false })
-        .eq('id', id)
-
+      const { error } = await client.from('channel_accounts').update({ is_active: false }).eq('id', id)
       if (error) return jsonResponse({ error: error.message }, 500)
       return jsonResponse({ disconnected: true })
     }
 
-    return jsonResponse({ error: 'Not found' }, 404)
+    // Catch-all: return the list for any unmatched GET
+    if (req.method === 'GET') {
+      const { data, error } = await client
+        .from('channel_accounts')
+        .select('id, platform, account_name, account_id, token_expires_at, is_active, default_budget_limit, created_at')
+        .order('created_at', { ascending: false })
+
+      if (error) return jsonResponse({ error: error.message }, 500)
+      return jsonResponse(data ?? [])
+    }
+
+    return jsonResponse({ error: 'Method not allowed' }, 405)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return jsonResponse({ error: message }, 500)
