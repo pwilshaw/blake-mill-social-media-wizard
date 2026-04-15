@@ -9,6 +9,7 @@ interface Props {
   onConnect: (platform: string, meta?: { shop_domain?: string }) => void
   accounts?: ChannelAccount[]
   onDisconnect?: (accountId: string) => void
+  platformStatus?: Record<string, boolean>
 }
 
 interface PlatformConfig {
@@ -98,7 +99,7 @@ function StatusDot({ isActive }: { isActive: boolean }) {
   )
 }
 
-export function ChannelConnector({ onConnect, accounts = [], onDisconnect }: Props) {
+export function ChannelConnector({ onConnect, accounts = [], onDisconnect, platformStatus = {} }: Props) {
   const [connecting, setConnecting] = useState<string | null>(null)
   const [shopDomain, setShopDomain] = useState('')
   const [showShopInput, setShowShopInput] = useState(false)
@@ -197,11 +198,14 @@ export function ChannelConnector({ onConnect, accounts = [], onDisconnect }: Pro
           const account = getAccountForPlatform(cfg.id)
           const isConnected = account !== undefined
           const isConnecting = connecting === cfg.id
+          const isConfigured = cfg.requiresDomain || platformStatus[cfg.id] !== false
 
           return (
             <div
               key={cfg.id}
-              className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/20"
+              className={`flex items-center gap-4 rounded-xl border bg-card p-4 transition-colors ${
+                isConfigured ? 'border-border hover:border-primary/20' : 'border-border/50 opacity-75'
+              }`}
             >
               {/* Platform icon */}
               <span
@@ -222,6 +226,8 @@ export function ChannelConnector({ onConnect, accounts = [], onDisconnect }: Pro
                 </div>
                 {isConnected && account ? (
                   <p className="truncate text-xs text-muted-foreground">{account.account_name}</p>
+                ) : !isConfigured ? (
+                  <p className="text-xs text-amber-600">API keys not configured</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">Not connected</p>
                 )}
@@ -236,7 +242,7 @@ export function ChannelConnector({ onConnect, accounts = [], onDisconnect }: Pro
                 >
                   Disconnect
                 </button>
-              ) : (
+              ) : isConfigured ? (
                 <button
                   type="button"
                   onClick={() => handleConnect(cfg)}
@@ -245,6 +251,10 @@ export function ChannelConnector({ onConnect, accounts = [], onDisconnect }: Pro
                 >
                   {isConnecting ? 'Connecting…' : 'Connect'}
                 </button>
+              ) : (
+                <span className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                  Setup needed
+                </span>
               )}
             </div>
           )

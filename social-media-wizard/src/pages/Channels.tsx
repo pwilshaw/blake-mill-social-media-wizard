@@ -34,10 +34,25 @@ async function initiateOAuth(platform: string): Promise<{ oauth_url: string }> {
     body: JSON.stringify({ platform }),
   })
   if (!res.ok) {
-    const err = await res.json() as { error?: string }
+    const err = await res.json() as { error?: string; setup_required?: boolean }
+    if (err.setup_required) {
+      throw new Error(`${platform} is not configured yet. API keys need to be added.`)
+    }
     throw new Error(err.error ?? 'OAuth initiation failed')
   }
   return res.json()
+}
+
+async function fetchPlatformStatus(): Promise<Record<string, boolean>> {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/channels/status`, {
+      headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+    })
+    if (!res.ok) return {}
+    return res.json()
+  } catch {
+    return {}
+  }
 }
 
 async function disconnectChannel(id: string): Promise<void> {
@@ -185,15 +200,25 @@ export default function Channels() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [showConnector, setShowConnector] = useState(false)
   const [oauthError, setOauthError] = useState<string | null>(null)
-  const [shopifySuccess, setShopifySuccess] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  // Handle Shopify OAuth callback redirect
+  // Handle OAuth callback redirects (all platforms)
   useEffect(() => {
-    if (searchParams.get('shopify') === 'connected') {
-      const shop = searchParams.get('shop') ?? 'your store'
-      setShopifySuccess(`Shopify store "${shop}" connected successfully.`)
+    const connected = searchParams.get('connected')
+    const shopifyConnected = searchParams.get('shopify')
+    const error = searchParams.get('error')
+
+    if (connected) {
+      setSuccessMessage(`${connected} connected successfully.`)
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      // Clean up URL params
+      setSearchParams({}, { replace: true })
+    } else if (shopifyConnected === 'connected') {
+      const shop = searchParams.get('shop') ?? 'your store'
+      setSuccessMessage(`Shopify store "${shop}" connected successfully.`)
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      setSearchParams({}, { replace: true })
+    } else if (error) {
+      setOauthError(decodeURIComponent(error))
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, setSearchParams, queryClient])
@@ -202,6 +227,12 @@ export default function Channels() {
     queryKey: ['channels'],
     queryFn: fetchChannels,
     retry: false,
+  })
+
+  const { data: platformStatus = {} } = useQuery({
+    queryKey: ['channels', 'status'],
+    queryFn: fetchPlatformStatus,
+    staleTime: 1000 * 60 * 5,
   })
 
   const { mutate: doDisconnect } = useMutation({
@@ -249,12 +280,12 @@ export default function Channels() {
         </button>
       </div>
 
-      {/* Shopify success */}
-      {shopifySuccess && (
+      {/* Success banner */}
+      {successMessage && (
         <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <p className="text-sm text-emerald-800">{shopifySuccess}</p>
+          <p className="text-sm text-emerald-800">{successMessage}</p>
           <button
-            onClick={() => setShopifySuccess(null)}
+            onClick={() => setSuccessMessage(null)}
             className="text-xs text-emerald-600 hover:text-emerald-800"
           >
             Dismiss
@@ -277,6 +308,7 @@ export default function Channels() {
             onConnect={handleConnect}
             accounts={accounts}
             onDisconnect={(id) => doDisconnect(id)}
+            platformStatus={platformStatus}
           />
         </section>
       )}
