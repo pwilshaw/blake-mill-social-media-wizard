@@ -7,7 +7,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { ChannelConnector } from '@/components/channels/ChannelConnector'
+import { AccountTypeBadge } from '@/components/channels/AccountTypeBadge'
 import { PLATFORM_META } from '@/lib/platforms'
+import { detectAccountType } from '@/lib/account-types'
 import type { ChannelAccount } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
@@ -113,13 +115,17 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
 
   const expiry = tokenExpiryLabel(account.token_expires_at)
   const platformInfo = PLATFORM_META[account.platform] ?? { label: account.platform, color: 'text-foreground', bgColor: 'bg-muted' }
+  const accountType = detectAccountType(account)
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-foreground">{account.account_name}</p>
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${platformInfo.color} ${platformInfo.bgColor}`}>{platformInfo.label}</span>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${platformInfo.color} ${platformInfo.bgColor}`}>{platformInfo.label}</span>
+            <AccountTypeBadge type={accountType} />
+          </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
