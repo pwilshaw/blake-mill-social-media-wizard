@@ -8,7 +8,6 @@ import type { ChannelAccount, Platform } from '@/lib/types'
 interface Props {
   onConnect: (platform: string, meta?: { shop_domain?: string }) => void
   accounts?: ChannelAccount[]
-  onDisconnect?: (accountId: string) => void
   platformStatus?: Record<string, boolean>
 }
 
@@ -90,22 +89,13 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
   },
 ]
 
-function StatusDot({ isActive }: { isActive: boolean }) {
-  return (
-    <span
-      className={`inline-block size-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-muted-foreground/30'}`}
-      aria-hidden="true"
-    />
-  )
-}
-
-export function ChannelConnector({ onConnect, accounts = [], onDisconnect, platformStatus = {} }: Props) {
+export function ChannelConnector({ onConnect, accounts = [], platformStatus = {} }: Omit<Props, 'onDisconnect'>) {
   const [connecting, setConnecting] = useState<string | null>(null)
   const [shopDomain, setShopDomain] = useState('')
   const [showShopInput, setShowShopInput] = useState(false)
 
-  function getAccountForPlatform(platform: string): ChannelAccount | undefined {
-    return accounts.find((a) => a.platform === platform && a.is_active)
+  function getAccountsForPlatform(platform: string): ChannelAccount[] {
+    return accounts.filter((a) => a.platform === platform && a.is_active)
   }
 
   async function handleConnect(cfg: PlatformConfig) {
@@ -195,8 +185,8 @@ export function ChannelConnector({ onConnect, accounts = [], onDisconnect, platf
       {/* Platform grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {PLATFORM_CONFIGS.map((cfg) => {
-          const account = getAccountForPlatform(cfg.id)
-          const isConnected = account !== undefined
+          const connectedAccounts = getAccountsForPlatform(cfg.id)
+          const connectedCount = connectedAccounts.length
           const isConnecting = connecting === cfg.id
           const isConfigured = cfg.requiresDomain || platformStatus[cfg.id] !== false
 
@@ -222,34 +212,32 @@ export function ChannelConnector({ onConnect, accounts = [], onDisconnect, platf
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{cfg.label}</span>
-                  <StatusDot isActive={isConnected} />
+                  {connectedCount > 0 && (
+                    <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      {connectedCount} connected
+                    </span>
+                  )}
                 </div>
-                {isConnected && account ? (
-                  <p className="truncate text-xs text-muted-foreground">{account.account_name}</p>
-                ) : !isConfigured ? (
+                {!isConfigured ? (
                   <p className="text-xs text-amber-600">API keys not configured</p>
+                ) : connectedCount > 0 ? (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {connectedAccounts.map((a) => a.account_name).join(', ')}
+                  </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">Not connected</p>
                 )}
               </div>
 
-              {/* Action */}
-              {isConnected && account ? (
-                <button
-                  type="button"
-                  onClick={() => onDisconnect?.(account.id)}
-                  className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-                >
-                  Disconnect
-                </button>
-              ) : isConfigured ? (
+              {/* Action — always show Connect/Add */}
+              {isConfigured ? (
                 <button
                   type="button"
                   onClick={() => handleConnect(cfg)}
                   disabled={isConnecting}
                   className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  {isConnecting ? 'Connecting…' : 'Connect'}
+                  {isConnecting ? 'Connecting…' : connectedCount > 0 ? 'Add account' : 'Connect'}
                 </button>
               ) : (
                 <span className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">

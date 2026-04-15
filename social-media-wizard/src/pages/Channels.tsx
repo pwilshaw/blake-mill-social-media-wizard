@@ -311,7 +311,6 @@ export default function Channels() {
         <ChannelConnector
           onConnect={handleConnect}
           accounts={accounts}
-          onDisconnect={(id) => doDisconnect(id)}
           platformStatus={platformStatus}
         />
       </section>
