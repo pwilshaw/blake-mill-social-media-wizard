@@ -44,7 +44,7 @@ function getPlatformConfigs(baseRedirectUri: string) {
       tokenUrl: 'https://graph.facebook.com/v22.0/oauth/access_token',
       clientId: metaAppId,
       clientSecret: metaAppSecret,
-      scopes: 'public_profile,pages_show_list,pages_read_engagement,ads_management,ads_read,business_management,catalog_management,publish_video',
+      scopes: 'pages_show_list,pages_read_engagement',
       redirectUri: baseRedirectUri,
       configured: Boolean(metaAppId && metaAppSecret),
     },

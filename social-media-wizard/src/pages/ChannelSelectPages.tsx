@@ -1,11 +1,10 @@
-// Channel page/account selection after OAuth callback
-// Shows all Facebook Pages + Instagram accounts the user manages
-// and lets them choose which to connect.
+// Channel page/ad account selection after OAuth callback
+// Shows all Facebook Pages, Ad Accounts, and Instagram accounts the user manages.
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Megaphone, FileText } from 'lucide-react'
 
 interface MetaPage {
   id: string
@@ -18,11 +17,40 @@ interface MetaPage {
   }
 }
 
+interface MetaAdAccount {
+  id: string
+  name: string
+  account_id: string
+  account_status: number
+  business_name?: string
+  currency?: string
+}
+
+type SelectableItem = {
+  id: string
+  type: 'page' | 'ad_account'
+  name: string
+  subtitle: string
+  pageToken?: string
+  igAccount?: { id: string; username: string }
+}
+
+const AD_STATUS_LABELS: Record<number, string> = {
+  1: 'Active',
+  2: 'Disabled',
+  3: 'Unsettled',
+  7: 'Pending Review',
+  8: 'Pending Closure',
+  9: 'In Grace Period',
+  100: 'Pending',
+  101: 'Temp Unavailable',
+}
+
 export default function ChannelSelectPages() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  const [pages, setPages] = useState<MetaPage[]>([])
+  const [items, setItems] = useState<SelectableItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -37,73 +65,130 @@ export default function ChannelSelectPages() {
       return
     }
 
-    async function fetchPages() {
+    async function fetchAll() {
+      const allItems: SelectableItem[] = []
+
       try {
-        const res = await fetch(
+        // Fetch Pages
+        const pagesRes = await fetch(
           `https://graph.facebook.com/v22.0/me/accounts?fields=id,name,category,access_token,instagram_business_account{id,username}&limit=100&access_token=${userToken}`
         )
-        if (!res.ok) throw new Error('Failed to fetch pages')
-        const data = await res.json()
-        setPages(data.data ?? [])
+        if (pagesRes.ok) {
+          const pagesData = await pagesRes.json()
+          for (const page of (pagesData.data ?? []) as MetaPage[]) {
+            allItems.push({
+              id: `page:${page.id}`,
+              type: 'page',
+              name: page.name,
+              subtitle: `Facebook Page${page.category ? ` · ${page.category}` : ''}`,
+              pageToken: page.access_token,
+              igAccount: page.instagram_business_account,
+            })
+          }
+        }
+
+        // Fetch Ad Accounts
+        const adsRes = await fetch(
+          `https://graph.facebook.com/v22.0/me/adaccounts?fields=id,name,account_id,account_status,business_name,currency&limit=100&access_token=${userToken}`
+        )
+        if (adsRes.ok) {
+          const adsData = await adsRes.json()
+          for (const ad of (adsData.data ?? []) as MetaAdAccount[]) {
+            const statusLabel = AD_STATUS_LABELS[ad.account_status] ?? 'Unknown'
+            allItems.push({
+              id: `ad:${ad.id}`,
+              type: 'ad_account',
+              name: ad.name || `Ad Account ${ad.account_id}`,
+              subtitle: `Ad Account${ad.business_name ? ` · ${ad.business_name}` : ''} · ${statusLabel} · ${ad.currency ?? 'GBP'}`,
+            })
+          }
+        }
+
+        setItems(allItems)
+
+        if (allItems.length === 0) {
+          setError('No Facebook Pages or Ad Accounts found. Make sure you have admin access and granted all permissions during login.')
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load pages')
+        setError(err instanceof Error ? err.message : 'Failed to load accounts')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchPages()
+    fetchAll()
   }, [userToken])
 
-  function togglePage(pageId: string) {
+  function toggleItem(id: string) {
     setSelected((prev) => {
       const next = new Set(prev)
-      if (next.has(pageId)) next.delete(pageId)
-      else next.add(pageId)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
 
   function selectAll() {
-    setSelected(new Set(pages.map((p) => p.id)))
+    setSelected(new Set(items.map((i) => i.id)))
   }
 
   async function handleConnect() {
     setSaving(true)
     try {
-      const selectedPages = pages.filter((p) => selected.has(p.id))
+      const selectedItems = items.filter((i) => selected.has(i.id))
+      let connectedCount = 0
 
-      for (const page of selectedPages) {
-        // Store Facebook Page connection
-        await supabase.from('channel_accounts').upsert(
-          {
-            platform: 'facebook',
-            account_id: page.id,
-            account_name: page.name,
-            access_token: page.access_token,
-            token_expires_at: '2099-01-01T00:00:00Z', // Page tokens from long-lived user tokens don't expire
-            is_active: true,
-          },
-          { onConflict: 'platform,account_id' }
-        )
-
-        // If page has an Instagram business account, store that too
-        if (page.instagram_business_account) {
+      for (const item of selectedItems) {
+        if (item.type === 'page') {
+          const pageId = item.id.replace('page:', '')
+          // Store Facebook Page
           await supabase.from('channel_accounts').upsert(
             {
-              platform: 'instagram',
-              account_id: page.instagram_business_account.id,
-              account_name: `${page.instagram_business_account.username} (via ${page.name})`,
-              access_token: page.access_token, // Instagram uses the page token
+              platform: 'facebook',
+              account_id: pageId,
+              account_name: item.name,
+              access_token: item.pageToken ?? userToken,
               token_expires_at: '2099-01-01T00:00:00Z',
               is_active: true,
             },
             { onConflict: 'platform,account_id' }
           )
+          connectedCount++
+
+          // Auto-connect linked Instagram
+          if (item.igAccount) {
+            await supabase.from('channel_accounts').upsert(
+              {
+                platform: 'instagram',
+                account_id: item.igAccount.id,
+                account_name: `@${item.igAccount.username}`,
+                access_token: item.pageToken ?? userToken,
+                token_expires_at: '2099-01-01T00:00:00Z',
+                is_active: true,
+              },
+              { onConflict: 'platform,account_id' }
+            )
+            connectedCount++
+          }
+        } else if (item.type === 'ad_account') {
+          const adId = item.id.replace('ad:', '')
+          // Store Ad Account as a Facebook channel (for ads management)
+          await supabase.from('channel_accounts').upsert(
+            {
+              platform: 'facebook',
+              account_id: adId,
+              account_name: `${item.name} (Ads)`,
+              access_token: userToken,
+              token_expires_at: '2099-01-01T00:00:00Z',
+              is_active: true,
+            },
+            { onConflict: 'platform,account_id' }
+          )
+          connectedCount++
         }
       }
 
-      navigate(`/channels?connected=${selectedPages.length}+accounts`)
+      navigate(`/channels?connected=${connectedCount}+accounts`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save connections')
     } finally {
@@ -115,12 +200,12 @@ export default function ChannelSelectPages() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Loading your pages and accounts...</p>
+        <p className="text-sm text-muted-foreground">Loading your pages and ad accounts...</p>
       </div>
     )
   }
 
-  if (error) {
+  if (error && items.length === 0) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-foreground">Connect Accounts</h1>
@@ -137,35 +222,17 @@ export default function ChannelSelectPages() {
     )
   }
 
-  if (pages.length === 0) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-foreground">Connect Accounts</h1>
-        <div className="rounded-lg border border-border py-12 text-center space-y-3">
-          <p className="text-sm text-muted-foreground">No Facebook Pages found.</p>
-          <p className="text-xs text-muted-foreground">
-            Make sure you're an admin of the pages you want to connect,
-            and that you granted page permissions during login.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/channels')}
-          className="text-sm text-primary hover:underline"
-        >
-          Back to Channels
-        </button>
-      </div>
-    )
-  }
-
-  const igCount = pages.filter((p) => p.instagram_business_account && selected.has(p.id)).length
+  const pages = items.filter((i) => i.type === 'page')
+  const adAccounts = items.filter((i) => i.type === 'ad_account')
+  const selectedPages = items.filter((i) => i.type === 'page' && selected.has(i.id))
+  const igCount = selectedPages.filter((i) => i.igAccount).length
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Select Accounts to Connect</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Choose which Facebook Pages (and their linked Instagram accounts) to connect to the wizard.
+          Choose which Facebook Pages, Ad Accounts, and Instagram accounts to connect.
         </p>
       </div>
 
@@ -175,68 +242,53 @@ export default function ChannelSelectPages() {
           onClick={selectAll}
           className="text-xs font-medium text-primary hover:underline"
         >
-          Select all ({pages.length})
+          Select all ({items.length})
         </button>
         <p className="text-xs text-muted-foreground">
-          {selected.size} page{selected.size !== 1 ? 's' : ''} selected
-          {igCount > 0 && ` + ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`}
+          {selected.size} selected
+          {igCount > 0 && ` + ${igCount} Instagram`}
         </p>
       </div>
 
-      {/* Page list */}
-      <div className="space-y-2">
-        {pages.map((page) => {
-          const isSelected = selected.has(page.id)
-          const hasIg = Boolean(page.instagram_business_account)
+      {/* Pages section */}
+      {pages.length > 0 && (
+        <div>
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            <FileText className="h-3.5 w-3.5" />
+            Facebook Pages ({pages.length})
+          </h2>
+          <div className="space-y-2">
+            {pages.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                isSelected={selected.has(item.id)}
+                onToggle={() => toggleItem(item.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-          return (
-            <button
-              key={page.id}
-              type="button"
-              onClick={() => togglePage(page.id)}
-              className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
-                isSelected
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                  : 'border-border bg-card hover:border-primary/30'
-              }`}
-            >
-              {/* Checkbox */}
-              <div
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                  isSelected
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border'
-                }`}
-              >
-                {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
-              </div>
-
-              {/* Page icon */}
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 text-sm font-bold">
-                {page.name.charAt(0)}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">{page.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                    Facebook Page
-                  </span>
-                  {page.category && (
-                    <span className="text-xs text-muted-foreground">{page.category}</span>
-                  )}
-                </div>
-                {hasIg && (
-                  <p className="mt-1 text-xs text-pink-600">
-                    + Instagram: @{page.instagram_business_account!.username}
-                  </p>
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </div>
+      {/* Ad Accounts section */}
+      {adAccounts.length > 0 && (
+        <div>
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            <Megaphone className="h-3.5 w-3.5" />
+            Ad Accounts ({adAccounts.length})
+          </h2>
+          <div className="space-y-2">
+            {adAccounts.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                isSelected={selected.has(item.id)}
+                onToggle={() => toggleItem(item.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Connect button */}
       <div className="flex items-center gap-3">
@@ -257,5 +309,60 @@ export default function ChannelSelectPages() {
         </button>
       </div>
     </div>
+  )
+}
+
+function ItemCard({
+  item,
+  isSelected,
+  onToggle,
+}: {
+  item: SelectableItem
+  isSelected: boolean
+  onToggle: () => void
+}) {
+  const bgColor = item.type === 'page' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
+  const badge = item.type === 'page' ? 'Facebook Page' : 'Ad Account'
+  const badgeColor = item.type === 'page' ? 'bg-blue-50 text-blue-600' : 'bg-violet-50 text-violet-600'
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
+        isSelected
+          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+          : 'border-border bg-card hover:border-primary/30'
+      }`}
+    >
+      <div
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+          isSelected
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-border'
+        }`}
+      >
+        {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+      </div>
+
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${bgColor} text-sm font-bold`}>
+        {item.name.charAt(0)}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">{item.name}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeColor}`}>
+            {badge}
+          </span>
+          <span className="text-xs text-muted-foreground">{item.subtitle}</span>
+        </div>
+        {item.igAccount && (
+          <p className="mt-1 text-xs text-pink-600">
+            + Instagram: @{item.igAccount.username}
+          </p>
+        )}
+      </div>
+    </button>
   )
 }
