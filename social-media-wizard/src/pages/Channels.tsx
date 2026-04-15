@@ -93,7 +93,7 @@ function tokenExpiryLabel(expiresAt: string): { label: string; isExpired: boolea
 // Per-channel settings row
 // ---------------------------------------------------------------------------
 
-function ChannelRow({ account }: { account: ChannelAccount }) {
+function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisconnect: (id: string) => void }) {
   const queryClient = useQueryClient()
   const [editingBudget, setEditingBudget] = useState(false)
   const [budgetInput, setBudgetInput] = useState(
@@ -186,6 +186,21 @@ function ChannelRow({ account }: { account: ChannelAccount }) {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Disconnect */}
+      <div className="border-t border-border pt-2 flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`Disconnect ${account.account_name}?`)) {
+              onDisconnect(account.id)
+            }
+          }}
+          className="text-xs font-medium text-destructive hover:text-destructive/80 transition-colors"
+        >
+          Disconnect
+        </button>
       </div>
     </div>
   )
@@ -328,7 +343,7 @@ export default function Channels() {
         {!isLoading && hasAccounts && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {accounts.map((account) => (
-              <ChannelRow key={account.id} account={account} />
+              <ChannelRow key={account.id} account={account} onDisconnect={(id) => doDisconnect(id)} />
             ))}
           </div>
         )}
