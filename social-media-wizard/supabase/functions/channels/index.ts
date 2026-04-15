@@ -334,11 +334,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
 
       try {
+        // For Meta platforms (Facebook/Instagram): get a long-lived user token
+        // then redirect to page selection so the user picks which pages to connect
+        if (platform === 'facebook' || platform === 'instagram') {
+          // Exchange code for short-lived token
+          const tokenUrl = new URL(config.tokenUrl)
+          tokenUrl.searchParams.set('client_id', config.clientId)
+          tokenUrl.searchParams.set('client_secret', config.clientSecret)
+          tokenUrl.searchParams.set('redirect_uri', config.redirectUri)
+          tokenUrl.searchParams.set('code', code)
+
+          const tokenRes = await fetch(tokenUrl.toString())
+          if (!tokenRes.ok) throw new Error(`Meta token exchange failed: ${await tokenRes.text()}`)
+          const tokenData = await tokenRes.json()
+
+          // Exchange for long-lived token
+          const longUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token')
+          longUrl.searchParams.set('grant_type', 'fb_exchange_token')
+          longUrl.searchParams.set('client_id', config.clientId)
+          longUrl.searchParams.set('client_secret', config.clientSecret)
+          longUrl.searchParams.set('fb_exchange_token', tokenData.access_token)
+
+          const longRes = await fetch(longUrl.toString())
+          if (!longRes.ok) throw new Error(`Long-lived token failed: ${await longRes.text()}`)
+          const longData = await longRes.json()
+
+          // Redirect to page selection with the long-lived user token
+          const selectUrl = `${appUrl}/channels/select?token=${encodeURIComponent(longData.access_token)}&platform=${platform}`
+          return Response.redirect(selectUrl, 302)
+        }
+
+        // For non-Meta platforms: auto-store as before
         let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string }
 
-        if (platform === 'facebook' || platform === 'instagram') {
-          tokenResult = await exchangeMetaToken(config, code)
-        } else if (platform === 'tiktok') {
+        if (platform === 'tiktok') {
           tokenResult = await exchangeTikTokToken(config, code)
         } else {
           tokenResult = await exchangeStandardOAuth(config, code)

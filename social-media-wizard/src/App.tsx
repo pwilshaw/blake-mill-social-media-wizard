@@ -19,6 +19,7 @@ const Budget = lazy(() => import('@/pages/Budget'))
 const Engagement = lazy(() => import('@/pages/Engagement'))
 const MediaBuyer = lazy(() => import('@/pages/MediaBuyer'))
 const Conversions = lazy(() => import('@/pages/Conversions'))
+const ChannelSelectPages = lazy(() => import('@/pages/ChannelSelectPages'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,7 @@ function App() {
                   <Route path="campaigns/:id/creatives" element={<CreativeGallery />} />
                   <Route path="calendar" element={<Calendar />} />
                   <Route path="channels" element={<Channels />} />
+                  <Route path="channels/select" element={<ChannelSelectPages />} />
                   <Route path="segments" element={<Segments />} />
                   <Route path="triggers" element={<Triggers />} />
                   <Route path="budget" element={<Budget />} />
