@@ -198,7 +198,6 @@ function ChannelRow({ account }: { account: ChannelAccount }) {
 export default function Channels() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [showConnector, setShowConnector] = useState(false)
   const [oauthError, setOauthError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -263,21 +262,12 @@ export default function Channels() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Channels</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage connected social media accounts.
-            {connectedAccounts.length > 0 && ` ${connectedAccounts.length} active.`}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowConnector((v) => !v)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          {showConnector ? 'Close' : 'Add channel'}
-        </button>
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Channels</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage connected social media accounts.
+          {connectedAccounts.length > 0 && ` ${connectedAccounts.length} active.`}
+        </p>
       </div>
 
       {/* Success banner */}
@@ -300,18 +290,16 @@ export default function Channels() {
         </div>
       )}
 
-      {/* Add channel panel */}
-      {showConnector && (
-        <section aria-label="Connect a channel" className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Connect a platform</h2>
-          <ChannelConnector
-            onConnect={handleConnect}
-            accounts={accounts}
-            onDisconnect={(id) => doDisconnect(id)}
-            platformStatus={platformStatus}
-          />
-        </section>
-      )}
+      {/* Platform connections */}
+      <section aria-label="Connect a channel" className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Platforms</h2>
+        <ChannelConnector
+          onConnect={handleConnect}
+          accounts={accounts}
+          onDisconnect={(id) => doDisconnect(id)}
+          platformStatus={platformStatus}
+        />
+      </section>
 
       {/* Connected channels list */}
       <section aria-label="Connected channels" className="space-y-3">
@@ -333,13 +321,7 @@ export default function Channels() {
         {!isLoading && !hasAccounts && (
           <div className="rounded-lg border border-dashed border-border py-12 text-center">
             <p className="text-sm text-muted-foreground">No channels connected yet.</p>
-            <button
-              type="button"
-              onClick={() => setShowConnector(true)}
-              className="mt-3 text-sm font-medium text-primary hover:underline"
-            >
-              Connect your first channel
-            </button>
+            <p className="mt-1 text-xs text-muted-foreground">Connect a platform above to get started.</p>
           </div>
         )}
 
