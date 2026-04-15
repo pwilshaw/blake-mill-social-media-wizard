@@ -12,12 +12,23 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  BookOpen,
+  Image,
 } from 'lucide-react'
+import { MEDIA_BUYER_RULE_PRESETS } from '@/lib/playbook-presets'
 import { formatCurrency } from '@/lib/format'
 import { PLATFORM_META } from '@/lib/platforms'
 import type { OptimizationGoal, Platform } from '@/lib/types'
 
-type BuyerTab = 'actions' | 'settings' | 'history'
+type BuyerTab = 'actions' | 'rules' | 'settings' | 'history'
+
+const RULE_CATEGORY_META: Record<string, { label: string; icon: typeof TrendingUp; color: string }> = {
+  scaling: { label: 'Scaling Rules', icon: TrendingUp, color: 'text-emerald-600 bg-emerald-50' },
+  pause: { label: 'Pause Rules', icon: Pause, color: 'text-red-600 bg-red-50' },
+  bid_adjustment: { label: 'Bid Adjustments', icon: DollarSign, color: 'text-blue-600 bg-blue-50' },
+  creative_refresh: { label: 'Creative Refresh', icon: Image, color: 'text-violet-600 bg-violet-50' },
+  audience: { label: 'Audience Optimization', icon: Users, color: 'text-amber-600 bg-amber-50' },
+}
 
 interface DemoAction {
   id: string
@@ -189,6 +200,7 @@ export default function MediaBuyer() {
       <div className="flex gap-1 border-b border-border">
         {([
           { key: 'actions', label: `Actions${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
+          { key: 'rules', label: `Playbook Rules (${MEDIA_BUYER_RULE_PRESETS.length})` },
           { key: 'settings', label: 'Settings' },
           { key: 'history', label: 'History' },
         ] as const).map(({ key, label }) => (
@@ -273,6 +285,75 @@ export default function MediaBuyer() {
                       </span>
                     )}
                   </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* RULES TAB */}
+      {tab === 'rules' && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Rules from the Social Media Playbook. Toggle to activate or deactivate each rule.
+            </p>
+          </div>
+          {Object.entries(RULE_CATEGORY_META).map(([category, meta]) => {
+            const rulesInCategory = MEDIA_BUYER_RULE_PRESETS.filter((r) => r.category === category)
+            if (rulesInCategory.length === 0) return null
+            return (
+              <div key={category}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`rounded-md p-1.5 ${meta.color}`}>
+                    <meta.icon className="h-3.5 w-3.5" />
+                  </div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {meta.label}
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {rulesInCategory.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
+                    >
+                      <div className="flex-1 min-w-0 mr-4">
+                        <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{rule.description}</p>
+                        <div className="mt-2 flex flex-col gap-1">
+                          <p className="text-[11px] text-muted-foreground">
+                            <span className="font-medium text-foreground">If:</span> {rule.condition}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            <span className="font-medium text-foreground">Then:</span> {rule.action}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {rule.auto_apply && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                            Auto
+                          </span>
+                        )}
+                        <button
+                          role="switch"
+                          aria-checked={rule.auto_apply}
+                          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                            rule.auto_apply ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                              rule.auto_apply ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )

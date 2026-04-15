@@ -7,7 +7,15 @@ import { WeatherCard } from '@/components/triggers/WeatherCard'
 import { EventFeed } from '@/components/triggers/EventFeed'
 import { TemplateEditor } from '@/components/triggers/TemplateEditor'
 import { formatDate } from '@/lib/format'
-import type { ContextualTrigger, ContentTemplate } from '@/lib/types'
+import { PLATFORM_META } from '@/lib/platforms'
+import {
+  WEATHER_TRIGGER_PRESETS,
+  EVENT_TRIGGER_PRESETS,
+  SHOPIFY_TRIGGER_PRESETS,
+  type TriggerPreset,
+} from '@/lib/playbook-presets'
+import type { ContextualTrigger, ContentTemplate, Platform } from '@/lib/types'
+import { Zap, CloudSun, CalendarDays, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ----------------------------------------------------------------
 // Supabase helpers
@@ -339,6 +347,22 @@ export default function Triggers() {
         <EventFeed events={PLACEHOLDER_EVENTS} triggers={activeTriggers} />
       </div>
 
+      {/* Playbook presets */}
+      <PlaybookPresets
+        onActivate={(preset) => {
+          createTrigger.mutate({
+            name: preset.name,
+            trigger_type: preset.trigger_type,
+            conditions: preset.conditions,
+            matched_shirts: [],
+            content_template_id: null,
+            is_active: true,
+            cooldown_hours: preset.cooldown_hours,
+          })
+        }}
+        existingNames={triggers.map((t) => t.name)}
+      />
+
       {/* Active triggers list */}
       <section>
         <h2 className="text-base font-semibold text-foreground mb-3">
@@ -553,5 +577,126 @@ export default function Triggers() {
         )}
       </section>
     </div>
+  )
+}
+
+// ----------------------------------------------------------------
+// Playbook Presets Component
+// ----------------------------------------------------------------
+
+function PlaybookPresets({
+  onActivate,
+  existingNames,
+}: {
+  onActivate: (preset: TriggerPreset) => void
+  existingNames: string[]
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  const PRESET_GROUPS = [
+    { label: 'Weather', icon: CloudSun, color: 'text-sky-600 bg-sky-50', presets: WEATHER_TRIGGER_PRESETS },
+    { label: 'Events', icon: CalendarDays, color: 'text-violet-600 bg-violet-50', presets: EVENT_TRIGGER_PRESETS },
+    { label: 'Shopify Signals', icon: ShoppingBag, color: 'text-emerald-600 bg-emerald-50', presets: SHOPIFY_TRIGGER_PRESETS },
+  ]
+
+  return (
+    <section className="rounded-xl border border-border bg-card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-amber-50 p-2">
+            <Zap className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Playbook Presets</p>
+            <p className="text-xs text-muted-foreground">
+              One-click trigger rules from the Social Media Playbook
+            </p>
+          </div>
+        </div>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border p-4 space-y-6">
+          {PRESET_GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`rounded-md p-1.5 ${group.color}`}>
+                  <group.icon className="h-3.5 w-3.5" />
+                </div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {group.presets.map((preset) => {
+                  const alreadyAdded = existingNames.includes(preset.name)
+                  return (
+                    <div
+                      key={preset.id}
+                      className={`rounded-lg border p-3 space-y-2 ${
+                        alreadyAdded ? 'border-border/50 opacity-50' : 'border-border'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{preset.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                            {preset.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preset.platforms.slice(0, 3).map((p) => {
+                          const meta = PLATFORM_META[p as Platform]
+                          return meta ? (
+                            <span
+                              key={p}
+                              className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${meta.color} ${meta.bgColor}`}
+                            >
+                              {meta.label}
+                            </span>
+                          ) : null
+                        })}
+                        {preset.platforms.length > 3 && (
+                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                            +{preset.platforms.length - 3}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">
+                          {preset.budget_modifier !== 1.0
+                            ? `Budget: ${preset.budget_modifier > 1 ? '+' : ''}${Math.round((preset.budget_modifier - 1) * 100)}%`
+                            : 'Standard budget'}
+                          {' · '}
+                          {preset.cooldown_hours}h cooldown
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onActivate(preset)}
+                          disabled={alreadyAdded}
+                          className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {alreadyAdded ? 'Added' : 'Activate'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

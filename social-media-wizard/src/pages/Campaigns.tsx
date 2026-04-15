@@ -6,8 +6,9 @@ import { CampaignStatusBadge } from '@/components/campaigns/CampaignStatusBadge'
 import { CampaignWizard } from '@/components/campaigns/CampaignWizard'
 import { formatDate } from '@/lib/format'
 import { PLATFORM_META } from '@/lib/platforms'
-import type { CampaignStatus, Platform } from '@/lib/types'
-import { Rocket, Zap, TrendingUp, Calendar } from 'lucide-react'
+import type { CampaignStatus } from '@/lib/types'
+import { Rocket, Zap, TrendingUp, CloudSun, Flame, PartyPopper } from 'lucide-react'
+import { CAMPAIGN_TEMPLATE_PRESETS } from '@/lib/playbook-presets'
 
 const STATUS_FILTERS: { label: string; value: CampaignStatus | undefined }[] = [
   { label: 'All', value: undefined },
@@ -18,44 +19,23 @@ const STATUS_FILTERS: { label: string; value: CampaignStatus | undefined }[] = [
   { label: 'Completed', value: 'completed' },
 ]
 
-const QUICK_TEMPLATES = [
-  {
-    icon: Rocket,
-    name: 'Bestseller Push',
-    description: 'Promote your top 5 sellers across all channels',
-    channels: ['facebook', 'instagram', 'google_ads'] as Platform[],
-    budget: 50,
-    duration: 7,
-    color: 'text-blue-600 bg-blue-50',
-  },
-  {
-    icon: Zap,
-    name: 'Flash Sale',
-    description: '24-hour promotion with urgency-driven content',
-    channels: ['instagram', 'tiktok', 'snapchat'] as Platform[],
-    budget: 30,
-    duration: 1,
-    color: 'text-amber-600 bg-amber-50',
-  },
-  {
-    icon: TrendingUp,
-    name: 'New Arrivals',
-    description: 'Showcase latest additions to your catalogue',
-    channels: ['facebook', 'instagram'] as Platform[],
-    budget: 40,
-    duration: 14,
-    color: 'text-emerald-600 bg-emerald-50',
-  },
-  {
-    icon: Calendar,
-    name: 'Weekend Special',
-    description: 'Friday–Sunday campaign targeting weekend shoppers',
-    channels: ['instagram', 'tiktok'] as Platform[],
-    budget: 25,
-    duration: 3,
-    color: 'text-violet-600 bg-violet-50',
-  },
-]
+const TEMPLATE_ICONS: Record<string, typeof Rocket> = {
+  'ct-product-launch': Rocket,
+  'ct-seasonal-event': PartyPopper,
+  'ct-flash-sale': Zap,
+  'ct-reactive-trending': TrendingUp,
+  'ct-weather-reactive': CloudSun,
+  'ct-black-friday': Flame,
+}
+
+const TEMPLATE_COLORS: Record<string, string> = {
+  'ct-product-launch': 'text-blue-600 bg-blue-50',
+  'ct-seasonal-event': 'text-pink-600 bg-pink-50',
+  'ct-flash-sale': 'text-amber-600 bg-amber-50',
+  'ct-reactive-trending': 'text-emerald-600 bg-emerald-50',
+  'ct-weather-reactive': 'text-sky-600 bg-sky-50',
+  'ct-black-friday': 'text-red-600 bg-red-50',
+}
 
 export default function Campaigns() {
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | undefined>(undefined)
@@ -134,44 +114,64 @@ export default function Campaigns() {
               Close
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {QUICK_TEMPLATES.map((tpl) => (
-              <button
-                key={tpl.name}
-                onClick={() => {
-                  setShowQuickLaunch(false)
-                  setShowWizard(true)
-                }}
-                className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:shadow-md"
-              >
-                <div className={`rounded-lg p-2 w-fit ${tpl.color}`}>
-                  <tpl.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {tpl.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{tpl.description}</p>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {tpl.channels.map((ch) => {
-                    const meta = PLATFORM_META[ch]
-                    return (
-                      <span
-                        key={ch}
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.color} ${meta.bgColor}`}
-                      >
-                        {meta.label}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            {CAMPAIGN_TEMPLATE_PRESETS.map((tpl) => {
+              const Icon = TEMPLATE_ICONS[tpl.id] ?? Rocket
+              const color = TEMPLATE_COLORS[tpl.id] ?? 'text-blue-600 bg-blue-50'
+              return (
+                <button
+                  key={tpl.id}
+                  onClick={() => {
+                    setShowQuickLaunch(false)
+                    setShowWizard(true)
+                  }}
+                  className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:shadow-md"
+                >
+                  <div className={`rounded-lg p-2 w-fit ${color}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {tpl.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tpl.description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {tpl.platforms.slice(0, 3).map((ch) => {
+                      const meta = PLATFORM_META[ch]
+                      return meta ? (
+                        <span
+                          key={ch}
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.color} ${meta.bgColor}`}
+                        >
+                          {meta.label}
+                        </span>
+                      ) : null
+                    })}
+                    {tpl.platforms.length > 3 && (
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        +{tpl.platforms.length - 3}
                       </span>
-                    )
-                  })}
-                </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>£{tpl.budget}/day</span>
-                  <span>{tpl.duration}d</span>
-                </div>
-              </button>
-            ))}
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{tpl.budget_multiplier}x budget</span>
+                    <span>{tpl.duration_days < 1 ? `${Math.round(tpl.duration_days * 24)}hr` : `${tpl.duration_days}d`}</span>
+                  </div>
+                  {/* Schedule preview */}
+                  <div className="space-y-1 border-t border-border pt-2">
+                    {tpl.schedule.slice(0, 3).map((step, i) => (
+                      <p key={i} className="text-[10px] text-muted-foreground truncate">
+                        <span className="font-medium text-foreground">{step.day}:</span> {step.action}
+                      </p>
+                    ))}
+                    {tpl.schedule.length > 3 && (
+                      <p className="text-[10px] text-muted-foreground">+{tpl.schedule.length - 3} more steps</p>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

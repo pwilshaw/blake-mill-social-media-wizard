@@ -8,7 +8,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { BudgetRuleEditor } from '@/components/budget/BudgetRuleEditor'
 import { SpendTracker } from '@/components/budget/SpendTracker'
-import type { BudgetRule, SpendLog } from '@/lib/types'
+import { PLATFORM_META } from '@/lib/platforms'
+import {
+  BUDGET_ALLOCATION_PRESETS,
+  BUDGET_EVENT_MULTIPLIERS,
+} from '@/lib/playbook-presets'
+import type { BudgetRule, SpendLog, Platform } from '@/lib/types'
+import { PieChart, Zap, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -195,6 +201,9 @@ export default function Budget() {
         </button>
       </div>
 
+      {/* Playbook Budget Presets */}
+      <BudgetPlaybookPresets />
+
       {/* Rule editor panel */}
       {showEditor && (
         <section
@@ -313,5 +322,118 @@ export default function Budget() {
         )}
       </section>
     </div>
+  )
+}
+
+// ----------------------------------------------------------------
+// Budget Playbook Presets Component
+// ----------------------------------------------------------------
+
+function BudgetPlaybookPresets() {
+  const [expanded, setExpanded] = useState(false)
+  const [selectedAllocation, setSelectedAllocation] = useState<string>('ba-growth')
+
+  const activePreset = BUDGET_ALLOCATION_PRESETS.find((p) => p.id === selectedAllocation)
+
+  return (
+    <section className="rounded-xl border border-border bg-card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-blue-50 p-2">
+            <PieChart className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Playbook Budget Strategy</p>
+            <p className="text-xs text-muted-foreground">
+              Allocation frameworks and event budget multipliers
+            </p>
+          </div>
+        </div>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border p-4 space-y-6">
+          {/* Allocation framework selector */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Budget Allocation Framework
+            </h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {BUDGET_ALLOCATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => setSelectedAllocation(preset.id)}
+                  className={`rounded-xl border p-3 text-left transition-all ${
+                    selectedAllocation === preset.id
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border hover:border-primary/30'
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-foreground">{preset.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Show selected allocation breakdown */}
+            {activePreset && (
+              <div className="mt-4 space-y-2">
+                {activePreset.allocations.map((alloc) => {
+                  const meta = PLATFORM_META[alloc.platform as Platform]
+                  return (
+                    <div key={alloc.platform} className="flex items-center gap-3">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium w-20 text-center ${meta?.color ?? ''} ${meta?.bgColor ?? 'bg-muted'}`}>
+                        {meta?.label ?? alloc.platform}
+                      </span>
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${alloc.pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums w-10 text-right">{alloc.pct}%</span>
+                      <span className="text-xs text-muted-foreground hidden sm:block">{alloc.focus}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Event multipliers */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5" />
+              Event Budget Multipliers
+            </h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {BUDGET_EVENT_MULTIPLIERS.map((mult) => (
+                <div
+                  key={mult.id}
+                  className="rounded-lg border border-border p-3 space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-foreground">{mult.name}</p>
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 tabular-nums">
+                      {mult.multiplier}x
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{mult.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
