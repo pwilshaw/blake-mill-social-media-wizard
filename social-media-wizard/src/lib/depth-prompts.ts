@@ -15,10 +15,16 @@ Working as this trio, you apply the DEPTH method to every piece of content you g
 
 You self-score all output and auto-improve until every dimension meets the quality bar.`
 
+export interface SearchInsights {
+  trending_keywords?: string[]
+  people_also_ask?: string[]
+  related_searches?: string[]
+}
+
 export function buildDepthPrompt(
   shirt: { name: string; description: string | null; contextual_tags: string[] },
   platform: string,
-  context?: { segment?: string; trigger?: string }
+  context?: { segment?: string; trigger?: string; searchInsights?: SearchInsights }
 ): string {
   const tagList =
     shirt.contextual_tags.length > 0
@@ -33,12 +39,21 @@ export function buildDepthPrompt(
     ? `\nContextual trigger / occasion: ${context.trigger}`
     : ''
 
+  const searchNote = context?.searchInsights
+    ? `\n\n## Search Intelligence (from live Google data)
+${context.searchInsights.trending_keywords?.length ? `**Trending keywords to incorporate:** ${context.searchInsights.trending_keywords.join(', ')}` : ''}
+${context.searchInsights.people_also_ask?.length ? `**Questions people are asking (use as hooks/angles):**\n${context.searchInsights.people_also_ask.map((q) => `- ${q}`).join('\n')}` : ''}
+${context.searchInsights.related_searches?.length ? `**Related search terms (use for hashtags):** ${context.searchInsights.related_searches.join(', ')}` : ''}
+
+IMPORTANT: Naturally incorporate 2-3 of the trending keywords into the copy. Use the "People Also Ask" questions as inspiration for hooks or angles. Include relevant search terms as hashtags.`
+    : ''
+
   return `You are acting as the DEPTH content engine (Behavioural Psychologist + Direct Response Copywriter + Data Analyst).
 
 ## Product
 - **Name**: ${shirt.name}
 - **Description**: ${shirt.description ?? 'Not provided'}
-- **Contextual tags**: ${tagList}${segmentNote}${triggerNote}
+- **Contextual tags**: ${tagList}${segmentNote}${triggerNote}${searchNote}
 
 ## Platform
 ${platform}

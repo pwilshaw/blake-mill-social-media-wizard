@@ -20,6 +20,7 @@ const Engagement = lazy(() => import('@/pages/Engagement'))
 const MediaBuyer = lazy(() => import('@/pages/MediaBuyer'))
 const Conversions = lazy(() => import('@/pages/Conversions'))
 const ChannelSelectPages = lazy(() => import('@/pages/ChannelSelectPages'))
+const SearchIntelligence = lazy(() => import('@/pages/SearchIntelligence'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
 const Terms = lazy(() => import('@/pages/Terms'))
 
@@ -60,6 +61,7 @@ function ProtectedApp() {
             <Route path="engagement" element={<Engagement />} />
             <Route path="media-buyer" element={<MediaBuyer />} />
             <Route path="conversions" element={<Conversions />} />
+            <Route path="search" element={<SearchIntelligence />} />
           </Route>
         </Routes>
       </AppProvider>

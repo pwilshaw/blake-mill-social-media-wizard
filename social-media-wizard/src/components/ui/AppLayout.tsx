@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Bot,
   BarChart3,
+  Globe,
   LogOut,
   Menu,
   X,
@@ -34,6 +35,7 @@ const NAV_SECTIONS = [
       { to: '/channels', label: 'Connections', icon: Radio },
       { to: '/media-buyer', label: 'AI Media Buyer', icon: Bot },
       { to: '/conversions', label: 'Conversions', icon: BarChart3 },
+      { to: '/search', label: 'Search Intel', icon: Globe },
     ],
   },
   {
