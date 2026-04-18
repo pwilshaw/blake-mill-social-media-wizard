@@ -5,7 +5,7 @@ import { AppProvider } from '@/contexts/AppContext'
 import { ProtectedRoute } from '@/components/ui/ProtectedRoute'
 import { AppLayout } from '@/components/ui/AppLayout'
 
-// Lazy-loaded pages for code splitting
+// Lazy-loaded pages
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const Campaigns = lazy(() => import('@/pages/Campaigns'))
 const CampaignDetail = lazy(() => import('@/pages/CampaignDetail'))
@@ -20,6 +20,8 @@ const Engagement = lazy(() => import('@/pages/Engagement'))
 const MediaBuyer = lazy(() => import('@/pages/MediaBuyer'))
 const Conversions = lazy(() => import('@/pages/Conversions'))
 const ChannelSelectPages = lazy(() => import('@/pages/ChannelSelectPages'))
+const Privacy = lazy(() => import('@/pages/Privacy'))
+const Terms = lazy(() => import('@/pages/Terms'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,34 +40,46 @@ function PageLoader() {
   )
 }
 
+function ProtectedApp() {
+  return (
+    <ProtectedRoute>
+      <AppProvider>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="campaigns" element={<Campaigns />} />
+            <Route path="campaigns/:id" element={<CampaignDetail />} />
+            <Route path="campaigns/:id/content" element={<ContentReview />} />
+            <Route path="campaigns/:id/creatives" element={<CreativeGallery />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="channels" element={<Channels />} />
+            <Route path="channels/select" element={<ChannelSelectPages />} />
+            <Route path="segments" element={<Segments />} />
+            <Route path="triggers" element={<Triggers />} />
+            <Route path="budget" element={<Budget />} />
+            <Route path="engagement" element={<Engagement />} />
+            <Route path="media-buyer" element={<MediaBuyer />} />
+            <Route path="conversions" element={<Conversions />} />
+          </Route>
+        </Routes>
+      </AppProvider>
+    </ProtectedRoute>
+  )
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <ProtectedRoute>
-          <AppProvider>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route element={<AppLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="campaigns" element={<Campaigns />} />
-                  <Route path="campaigns/:id" element={<CampaignDetail />} />
-                  <Route path="campaigns/:id/content" element={<ContentReview />} />
-                  <Route path="campaigns/:id/creatives" element={<CreativeGallery />} />
-                  <Route path="calendar" element={<Calendar />} />
-                  <Route path="channels" element={<Channels />} />
-                  <Route path="channels/select" element={<ChannelSelectPages />} />
-                  <Route path="segments" element={<Segments />} />
-                  <Route path="triggers" element={<Triggers />} />
-                  <Route path="budget" element={<Budget />} />
-                  <Route path="engagement" element={<Engagement />} />
-                  <Route path="media-buyer" element={<MediaBuyer />} />
-                  <Route path="conversions" element={<Conversions />} />
-                </Route>
-              </Routes>
-            </Suspense>
-          </AppProvider>
-        </ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public pages — no auth required */}
+            <Route path="privacy" element={<Privacy />} />
+            <Route path="terms" element={<Terms />} />
+            {/* Protected app — requires login */}
+            <Route path="*" element={<ProtectedApp />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </QueryClientProvider>
   )
