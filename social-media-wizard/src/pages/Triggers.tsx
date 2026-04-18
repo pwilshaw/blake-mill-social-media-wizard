@@ -79,11 +79,18 @@ const PLACEHOLDER_FORECAST = [
 ]
 
 const PLACEHOLDER_EVENTS = [
-  { id: '1', title: 'Glastonbury Festival', category: 'music', date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0], relevance: 92 },
-  { id: '2', title: 'London Marathon', category: 'sports', date: new Date(Date.now() + 12 * 86400000).toISOString().split('T')[0], relevance: 78 },
-  { id: '3', title: 'Notting Hill Carnival', category: 'festival', date: new Date(Date.now() + 18 * 86400000).toISOString().split('T')[0], relevance: 85 },
-  { id: '4', title: 'Chelsea Flower Show', category: 'outdoor', date: new Date(Date.now() + 9 * 86400000).toISOString().split('T')[0], relevance: 54 },
-  { id: '5', title: 'Wimbledon Championships', category: 'sports', date: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0], relevance: 88 },
+  { id: '1', title: 'Glastonbury Festival', category: 'music', date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0], relevance: 92, location: 'Somerset' },
+  { id: '2', title: 'London Marathon', category: 'sports', date: new Date(Date.now() + 12 * 86400000).toISOString().split('T')[0], relevance: 78, location: 'London' },
+  { id: '3', title: 'Notting Hill Carnival', category: 'festival', date: new Date(Date.now() + 18 * 86400000).toISOString().split('T')[0], relevance: 85, location: 'London' },
+  { id: '4', title: 'Chelsea Flower Show', category: 'outdoor', date: new Date(Date.now() + 9 * 86400000).toISOString().split('T')[0], relevance: 54, location: 'London' },
+  { id: '5', title: 'Wimbledon Championships', category: 'sports', date: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0], relevance: 88, location: 'London' },
+  { id: '6', title: 'Parklife Festival', category: 'music', date: new Date(Date.now() + 8 * 86400000).toISOString().split('T')[0], relevance: 81, location: 'Manchester' },
+  { id: '7', title: 'Manchester Day Parade', category: 'local', date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0], relevance: 65, location: 'Manchester' },
+  { id: '8', title: 'Leeds Festival', category: 'music', date: new Date(Date.now() + 25 * 86400000).toISOString().split('T')[0], relevance: 79, location: 'Leeds' },
+  { id: '9', title: 'Edinburgh Fringe', category: 'festival', date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0], relevance: 72, location: 'Edinburgh' },
+  { id: '10', title: 'British Grand Prix', category: 'sports', date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], relevance: 90, location: 'Nationwide' },
+  { id: '11', title: 'Brighton Pride', category: 'festival', date: new Date(Date.now() + 20 * 86400000).toISOString().split('T')[0], relevance: 76, location: 'Brighton' },
+  { id: '12', title: 'Liverpool Sound City', category: 'music', date: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0], relevance: 68, location: 'Liverpool' },
 ]
 
 // ----------------------------------------------------------------
@@ -341,11 +348,11 @@ export default function Triggers() {
         </button>
       </div>
 
-      {/* Weather + Events panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WeatherCard forecast={PLACEHOLDER_FORECAST} triggers={activeTriggers} />
-        <EventFeed events={PLACEHOLDER_EVENTS} triggers={activeTriggers} />
-      </div>
+      {/* Weather panel */}
+      <WeatherCard forecast={PLACEHOLDER_FORECAST} triggers={activeTriggers} />
+
+      {/* Event discovery — full width */}
+      <EventFeed events={PLACEHOLDER_EVENTS} triggers={activeTriggers} />
 
       {/* Playbook presets */}
       <PlaybookPresets
