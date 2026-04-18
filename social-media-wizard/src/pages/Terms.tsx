@@ -91,7 +91,7 @@ export default function Terms() {
         <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           For questions about these terms, contact:<br />
-          <strong>Email:</strong> paul@blakemill.co.uk
+          <strong>Email:</strong> hi@designedforhumans.tech
         </p>
       </section>
     </div>

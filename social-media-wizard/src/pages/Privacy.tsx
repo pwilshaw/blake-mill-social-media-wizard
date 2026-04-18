@@ -96,7 +96,7 @@ export default function Privacy() {
         <h2 className="text-lg font-semibold text-foreground">9. Contact</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           For any privacy-related questions or data requests, contact:<br />
-          <strong>Email:</strong> paul@blakemill.co.uk
+          <strong>Email:</strong> hi@designedforhumans.tech
         </p>
       </section>
     </div>
