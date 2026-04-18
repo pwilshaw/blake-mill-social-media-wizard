@@ -10,6 +10,13 @@
 //   "competitor"       — what's ranking for your product keywords
 //   "content_angles"   — PAA data formatted as content angle suggestions
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+// Daily search cap — SerpAPI free tier = 100/month
+// Note: "content_angles" uses 2 API calls (search + autocomplete), "trending" uses 2 (timeseries + related)
+const DAILY_SEARCH_CAP = 5
+const MONTHLY_SEARCH_CAP = 80 // leave 20 buffer for the 100/month free tier
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -246,6 +253,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'SERPAPI_KEY not configured.' }, 500)
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const db = createClient(supabaseUrl, serviceRoleKey)
+
   let body: { action?: string; query?: string; location?: string }
   try {
     body = await req.json()
@@ -262,21 +273,82 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'query is required.' }, 400)
   }
 
+  // --- Rate limiting ---
+  const today = new Date().toISOString().split('T')[0]
+  const monthStart = today.slice(0, 7) + '-01'
+
+  // Count today's searches
+  const { count: todayCount } = await db
+    .from('search_usage')
+    .select('*', { count: 'exact', head: true })
+    .gte('searched_at', `${today}T00:00:00Z`)
+
+  if ((todayCount ?? 0) >= DAILY_SEARCH_CAP) {
+    return jsonResponse({
+      error: `Daily search limit reached (${DAILY_SEARCH_CAP}/day). Resets at midnight UTC.`,
+      limit: DAILY_SEARCH_CAP,
+      used_today: todayCount,
+    }, 429)
+  }
+
+  // Count this month's searches
+  const { count: monthCount } = await db
+    .from('search_usage')
+    .select('*', { count: 'exact', head: true })
+    .gte('searched_at', `${monthStart}T00:00:00Z`)
+
+  if ((monthCount ?? 0) >= MONTHLY_SEARCH_CAP) {
+    return jsonResponse({
+      error: `Monthly search limit reached (${MONTHLY_SEARCH_CAP}/month). Resets on the 1st.`,
+      limit: MONTHLY_SEARCH_CAP,
+      used_month: monthCount,
+    }, 429)
+  }
+
   try {
+    // How many SerpAPI calls each action makes
+    const apiCallCounts: Record<string, number> = {
+      keyword_research: 1,
+      competitor: 1,
+      trending: 2,
+      content_angles: 2,
+    }
+
+    let result: unknown
     switch (action) {
       case 'keyword_research':
       case 'competitor':
-        return jsonResponse(await keywordResearch(apiKey, query, location))
-
+        result = await keywordResearch(apiKey, query, location)
+        break
       case 'trending':
-        return jsonResponse(await trendingSearch(apiKey, query))
-
+        result = await trendingSearch(apiKey, query)
+        break
       case 'content_angles':
-        return jsonResponse(await contentAngles(apiKey, query, location))
-
+        result = await contentAngles(apiKey, query, location)
+        break
       default:
         return jsonResponse({ error: `Unknown action: ${action}` }, 400)
     }
+
+    // Log usage
+    await db.from('search_usage').insert({
+      query,
+      action,
+      api_calls: apiCallCounts[action] ?? 1,
+    })
+
+    // Return result with usage info
+    const updatedTodayCount = (todayCount ?? 0) + 1
+    const updatedMonthCount = (monthCount ?? 0) + 1
+    return jsonResponse({
+      ...(result as Record<string, unknown>),
+      _usage: {
+        today: updatedTodayCount,
+        daily_limit: DAILY_SEARCH_CAP,
+        month: updatedMonthCount,
+        monthly_limit: MONTHLY_SEARCH_CAP,
+      },
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return jsonResponse({ error: message }, 500)

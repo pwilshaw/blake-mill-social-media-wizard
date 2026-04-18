@@ -60,6 +60,13 @@ interface TrendQuery {
   extracted_value?: number
 }
 
+interface UsageInfo {
+  today: number
+  daily_limit: number
+  month: number
+  monthly_limit: number
+}
+
 interface KeywordData {
   query: string
   total_results: string
@@ -119,6 +126,7 @@ export default function SearchIntelligence() {
   const [keywordData, setKeywordData] = useState<KeywordData | null>(null)
   const [anglesData, setAnglesData] = useState<AnglesData | null>(null)
   const [trendingData, setTrendingData] = useState<TrendingData | null>(null)
+  const [usage, setUsage] = useState<UsageInfo | null>(null)
 
   async function handleSearch(searchQuery?: string) {
     const q = searchQuery ?? query
@@ -129,13 +137,18 @@ export default function SearchIntelligence() {
     setError(null)
 
     try {
+      let data: Record<string, unknown>
       if (tab === 'research') {
-        setKeywordData(await searchApi('keyword_research', q, location))
+        data = await searchApi('keyword_research', q, location)
+        setKeywordData(data as unknown as KeywordData)
       } else if (tab === 'angles') {
-        setAnglesData(await searchApi('content_angles', q, location))
-      } else if (tab === 'trending') {
-        setTrendingData(await searchApi('trending', q))
+        data = await searchApi('content_angles', q, location)
+        setAnglesData(data as unknown as AnglesData)
+      } else {
+        data = await searchApi('trending', q)
+        setTrendingData(data as unknown as TrendingData)
       }
+      if (data._usage) setUsage(data._usage as UsageInfo)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed')
     } finally {
@@ -169,16 +182,36 @@ export default function SearchIntelligence() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-indigo-100 p-2.5">
-          <Globe className="h-6 w-6 text-indigo-600" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-indigo-100 p-2.5">
+            <Globe className="h-6 w-6 text-indigo-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Search Intelligence</h1>
+            <p className="text-sm text-muted-foreground">
+              Live Google data to optimise your social content for organic reach
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Search Intelligence</h1>
-          <p className="text-sm text-muted-foreground">
-            Live Google data to optimise your social content for organic reach
-          </p>
-        </div>
+        {usage && (
+          <div className="text-right space-y-0.5">
+            <p className="text-xs text-muted-foreground">
+              Today: <span className="font-semibold text-foreground">{usage.today}</span>/{usage.daily_limit}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Month: <span className="font-semibold text-foreground">{usage.month}</span>/{usage.monthly_limit}
+            </p>
+            <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden ml-auto">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  usage.month / usage.monthly_limit > 0.8 ? 'bg-red-500' : 'bg-primary'
+                }`}
+                style={{ width: `${Math.min(100, (usage.month / usage.monthly_limit) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Search bar */}
