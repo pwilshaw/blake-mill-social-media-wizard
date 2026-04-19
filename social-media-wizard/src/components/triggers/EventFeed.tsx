@@ -48,9 +48,42 @@ interface CustomEvent {
   is_active: boolean
 }
 
+interface LiveEvent {
+  title: string
+  date: string
+  when: string
+  venue: string
+  address: string
+  description: string
+  link: string
+  thumbnail: string
+  category: string
+}
+
+interface LiveEventsData {
+  location: string
+  events: LiveEvent[]
+  _cached?: boolean
+}
+
 interface EventFeedProps {
-  events: DetectedEvent[]
   triggers: ContextualTrigger[]
+}
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+async function fetchLiveEvents(city: string): Promise<LiveEventsData> {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/search-intelligence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON_KEY },
+    body: JSON.stringify({ action: 'events', city }),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.error ?? 'Events fetch failed')
+  }
+  return res.json()
 }
 
 // ----------------------------------------------------------------
@@ -156,11 +189,11 @@ function matchedTriggers(event: DetectedEvent, triggers: ContextualTrigger[]): C
 // Component
 // ----------------------------------------------------------------
 
-export function EventFeed({ events, triggers }: EventFeedProps) {
+export function EventFeed({ triggers }: EventFeedProps) {
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState('')
-  const [locationFilter, setLocationFilter] = useState('All locations')
+  const [locationFilter, setLocationFilter] = useState('London')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [showAddEvent, setShowAddEvent] = useState(false)
@@ -170,6 +203,13 @@ export function EventFeed({ events, triggers }: EventFeedProps) {
     queryKey: ['custom-events'],
     queryFn: fetchCustomEvents,
     staleTime: 1000 * 60 * 2,
+  })
+
+  const { data: liveEventsData, isLoading: eventsLoading } = useQuery<LiveEventsData>({
+    queryKey: ['live-events', locationFilter],
+    queryFn: () => fetchLiveEvents(locationFilter === 'All locations' ? 'London' : locationFilter),
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
   })
 
   const deleteEvent = useMutation({
@@ -183,9 +223,22 @@ export function EventFeed({ events, triggers }: EventFeedProps) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['custom-events'] }),
   })
 
-  // Merge detected + custom events
-  const allEvents: (DetectedEvent & { isCustom?: boolean; customData?: CustomEvent })[] = [
-    ...events.map((e) => ({ ...e, isCustom: false as const })),
+  // Convert live events to the common format
+  const liveEvents: (DetectedEvent & { isCustom?: boolean; customData?: CustomEvent; liveEvent?: LiveEvent })[] =
+    (liveEventsData?.events ?? []).map((e, i) => ({
+      id: `live-${i}`,
+      title: e.title,
+      category: e.category,
+      date: e.date,
+      relevance: 75,
+      location: liveEventsData?.location ?? locationFilter,
+      isCustom: false,
+      liveEvent: e,
+    }))
+
+  // Merge live + custom events
+  const allEvents = [
+    ...liveEvents,
     ...customEvents.map((ce) => ({
       id: ce.id,
       title: ce.title,
@@ -204,12 +257,9 @@ export function EventFeed({ events, triggers }: EventFeedProps) {
       !search ||
       event.title.toLowerCase().includes(search.toLowerCase()) ||
       event.category.toLowerCase().includes(search.toLowerCase())
-    const matchesLocation =
-      locationFilter === 'All locations' ||
-      event.location?.toLowerCase().includes(locationFilter.toLowerCase())
     const matchesCategory =
       categoryFilter === 'all' || event.category === categoryFilter
-    return matchesSearch && matchesLocation && matchesCategory
+    return matchesSearch && matchesCategory
   })
 
   // Sort: custom events first, then by date
@@ -227,7 +277,8 @@ export function EventFeed({ events, triggers }: EventFeedProps) {
           <div>
             <h2 className="text-sm font-semibold text-foreground">Event Discovery</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {filtered.length} events · {customEvents.length} custom
+              {eventsLoading ? 'Loading...' : `${filtered.length} events`} · {customEvents.length} custom
+              {liveEventsData?._cached && ' · cached'}
             </p>
           </div>
           <button
@@ -279,19 +330,19 @@ export function EventFeed({ events, triggers }: EventFeedProps) {
               </button>
               {showLocationDropdown && (
                 <div className="absolute top-full left-0 z-20 mt-1 w-48 rounded-lg border border-border bg-card shadow-lg py-1 max-h-60 overflow-y-auto">
-                  {UK_CITIES.map((city) => (
+                  {UK_CITIES.filter((c) => c !== 'All locations').map((c) => (
                     <button
-                      key={city}
+                      key={c}
                       type="button"
                       onClick={() => {
-                        setLocationFilter(city)
+                        setLocationFilter(c)
                         setShowLocationDropdown(false)
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs hover:bg-muted transition-colors ${
-                        locationFilter === city ? 'font-semibold text-primary' : 'text-foreground'
+                        locationFilter === c ? 'font-semibold text-primary' : 'text-foreground'
                       }`}
                     >
-                      {city}
+                      {c}
                     </button>
                   ))}
                 </div>
@@ -428,6 +479,37 @@ export function EventFeed({ events, triggers }: EventFeedProps) {
                         </span>
                       )}
                     </div>
+
+                    {/* Live event extras */}
+                    {!event.isCustom && event.liveEvent && (
+                      <div className="mt-2 space-y-1.5">
+                        {event.liveEvent.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">{event.liveEvent.description}</p>
+                        )}
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {event.liveEvent.venue && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3" />
+                              {event.liveEvent.venue}
+                            </span>
+                          )}
+                          {event.liveEvent.when && (
+                            <span className="text-xs text-muted-foreground">{event.liveEvent.when}</span>
+                          )}
+                          {event.liveEvent.link && (
+                            <a
+                              href={event.liveEvent.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Details
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Custom event extras */}
                     {event.isCustom && event.customData && (

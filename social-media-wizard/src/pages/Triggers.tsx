@@ -68,30 +68,9 @@ function TriggerTypeBadge({ type }: { type: string }) {
 // Placeholder forecast / event data (replaced by real API in production)
 // ----------------------------------------------------------------
 
-const PLACEHOLDER_FORECAST = [
-  { date: new Date(Date.now() + 0 * 86400000).toISOString().split('T')[0], temp: 22, condition: 'sunny', icon: '☀️' },
-  { date: new Date(Date.now() + 1 * 86400000).toISOString().split('T')[0], temp: 19, condition: 'cloudy', icon: '☁️' },
-  { date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], temp: 14, condition: 'rainy', icon: '🌧️' },
-  { date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0], temp: 11, condition: 'stormy', icon: '⛈️' },
-  { date: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0], temp: 17, condition: 'overcast', icon: '🌥️' },
-  { date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0], temp: 21, condition: 'sunny', icon: '☀️' },
-  { date: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0], temp: 23, condition: 'sunny', icon: '🌤️' },
-]
+// Weather data now fetched live inside WeatherCard via SerpAPI
 
-const PLACEHOLDER_EVENTS = [
-  { id: '1', title: 'Glastonbury Festival', category: 'music', date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0], relevance: 92, location: 'Somerset' },
-  { id: '2', title: 'London Marathon', category: 'sports', date: new Date(Date.now() + 12 * 86400000).toISOString().split('T')[0], relevance: 78, location: 'London' },
-  { id: '3', title: 'Notting Hill Carnival', category: 'festival', date: new Date(Date.now() + 18 * 86400000).toISOString().split('T')[0], relevance: 85, location: 'London' },
-  { id: '4', title: 'Chelsea Flower Show', category: 'outdoor', date: new Date(Date.now() + 9 * 86400000).toISOString().split('T')[0], relevance: 54, location: 'London' },
-  { id: '5', title: 'Wimbledon Championships', category: 'sports', date: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0], relevance: 88, location: 'London' },
-  { id: '6', title: 'Parklife Festival', category: 'music', date: new Date(Date.now() + 8 * 86400000).toISOString().split('T')[0], relevance: 81, location: 'Manchester' },
-  { id: '7', title: 'Manchester Day Parade', category: 'local', date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0], relevance: 65, location: 'Manchester' },
-  { id: '8', title: 'Leeds Festival', category: 'music', date: new Date(Date.now() + 25 * 86400000).toISOString().split('T')[0], relevance: 79, location: 'Leeds' },
-  { id: '9', title: 'Edinburgh Fringe', category: 'festival', date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0], relevance: 72, location: 'Edinburgh' },
-  { id: '10', title: 'British Grand Prix', category: 'sports', date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], relevance: 90, location: 'Nationwide' },
-  { id: '11', title: 'Brighton Pride', category: 'festival', date: new Date(Date.now() + 20 * 86400000).toISOString().split('T')[0], relevance: 76, location: 'Brighton' },
-  { id: '12', title: 'Liverpool Sound City', category: 'music', date: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0], relevance: 68, location: 'Liverpool' },
-]
+// Events now fetched live inside EventFeed via SerpAPI
 
 // ----------------------------------------------------------------
 // Main page component
@@ -348,11 +327,11 @@ export default function Triggers() {
         </button>
       </div>
 
-      {/* Weather panel */}
-      <WeatherCard forecast={PLACEHOLDER_FORECAST} triggers={activeTriggers} />
+      {/* Weather panel — live data via SerpAPI */}
+      <WeatherCard triggers={activeTriggers} />
 
-      {/* Event discovery — full width */}
-      <EventFeed events={PLACEHOLDER_EVENTS} triggers={activeTriggers} />
+      {/* Event discovery — live data via SerpAPI */}
+      <EventFeed triggers={activeTriggers} />
 
       {/* Playbook presets */}
       <PlaybookPresets
