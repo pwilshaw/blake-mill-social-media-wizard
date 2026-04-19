@@ -79,10 +79,107 @@ async function createCampaign(payload: {
 }
 
 async function triggerContentGeneration(campaignId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('generate-content', {
-    body: { campaign_id: campaignId },
-  })
-  if (error) throw new Error(error.message)
+  // Fetch the campaign to get its channels and linked shirts
+  const { data: campaign, error: campaignError } = await supabase
+    .from('campaigns')
+    .select('channels')
+    .eq('id', campaignId)
+    .single()
+
+  if (campaignError) throw new Error(campaignError.message)
+
+  const { data: links, error: linksError } = await supabase
+    .from('campaign_shirts')
+    .select('shirt_product_id')
+    .eq('campaign_id', campaignId)
+
+  if (linksError) throw new Error(linksError.message)
+
+  const shirtIds = (links ?? []).map((l: { shirt_product_id: string }) => l.shirt_product_id)
+  if (shirtIds.length === 0) throw new Error('No shirts linked to this campaign')
+
+  // Generate content for each platform (default to instagram if no channels set)
+  const platforms = (campaign as { channels: string[] }).channels
+  const targetPlatforms = platforms.length > 0 ? platforms : ['instagram']
+
+  // For channel UUIDs, map to platform names via channel_accounts
+  let platformNames: string[] = []
+  if (targetPlatforms[0]?.includes('-')) {
+    // UUIDs — look up platform names
+    const { data: accounts } = await supabase
+      .from('channel_accounts')
+      .select('platform')
+      .in('id', targetPlatforms)
+    platformNames = [...new Set((accounts ?? []).map((a: { platform: string }) => a.platform))]
+  } else {
+    platformNames = targetPlatforms
+  }
+
+  if (platformNames.length === 0) platformNames = ['instagram']
+
+  // Fetch search insights for SEO-optimised content
+  let searchInsights: Record<string, unknown> = {}
+  try {
+    const searchRes = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-intelligence`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action: 'content_angles', query: 'mens shirts UK' }),
+      }
+    )
+    if (searchRes.ok) {
+      const searchData = await searchRes.json()
+      const angles = (searchData.angles ?? []) as Array<{ type: string; angle: string }>
+      searchInsights = {
+        trending_keywords: angles
+          .filter((a: { type: string }) => a.type === 'search_term')
+          .slice(0, 5)
+          .map((a: { angle: string }) => a.angle),
+        people_also_ask: angles
+          .filter((a: { type: string }) => a.type === 'question')
+          .slice(0, 3)
+          .map((a: { angle: string }) => a.angle),
+      }
+    }
+  } catch {
+    // Search insights are optional — continue without them
+  }
+
+  const errors: string[] = []
+
+  for (const platform of platformNames) {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-content`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          shirt_ids: shirtIds,
+          platform,
+          context_overrides: Object.keys(searchInsights).length > 0
+            ? { search_insights: searchInsights }
+            : undefined,
+        }),
+      }
+    )
+
+    if (!res.ok) {
+      const err = await res.json()
+      errors.push(`${platform}: ${err.error ?? 'Generation failed'}`)
+    }
+  }
+
+  if (errors.length === platformNames.length) {
+    throw new Error(`Content generation failed: ${errors.join('; ')}`)
+  }
 }
 
 // ----------------------------------------------------------------

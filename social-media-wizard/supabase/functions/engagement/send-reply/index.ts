@@ -78,11 +78,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed' }, 405)
   }
 
-  const metaAccessToken = Deno.env.get('META_ACCESS_TOKEN')
-  if (!metaAccessToken) {
-    return jsonResponse({ error: 'META_ACCESS_TOKEN is not configured' }, 500)
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
@@ -135,13 +130,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const post = channelPost as ChannelPost
 
+  // Get access token from the channel account
+  const { data: channelAccount, error: accountError } = await client
+    .from('channel_accounts')
+    .select('access_token')
+    .eq('id', post.channel_account_id)
+    .single()
+
+  if (accountError || !channelAccount?.access_token) {
+    return jsonResponse({ error: 'Channel account access token not found' }, 404)
+  }
+
   // Post the reply to Meta
   let platformReplyId: string
   try {
     platformReplyId = await postCommentReply(
       engagementReply.platform_comment_id,
       engagementReply.reply_text,
-      metaAccessToken,
+      channelAccount.access_token,
     )
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

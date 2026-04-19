@@ -133,5 +133,111 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ reply: data })
   }
 
+  // -------------------------------------------------------------------------
+  // POST — generate AI reply for a comment using Claude
+  // -------------------------------------------------------------------------
+  if (req.method === 'POST') {
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+    if (!anthropicKey) {
+      return jsonResponse({ error: 'ANTHROPIC_API_KEY is not configured' }, 500)
+    }
+
+    let body: { comment_text: string; post_context?: string; reply_id?: string }
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'Invalid JSON body' }, 400)
+    }
+
+    const { comment_text, post_context = 'Blake Mill shirt product post', reply_id } = body
+    if (!comment_text) {
+      return jsonResponse({ error: 'comment_text is required' }, 422)
+    }
+
+    // Build the prompt (inlined from engagement-prompts.ts since edge functions can't import from src/)
+    const prompt = `You are the community manager for Blake Mill, a men's shirt brand with a sharp, witty, irreverent tone.
+
+## Brand Voice
+Blake Mill is an independent men's shirt brand with a dry, witty, irreverent voice. The brand is culturally aware without being try-hard, confident without being arrogant, and playful without being offensive. Replies feel like they come from a smart human, not a corporate account. Never use hollow phrases like "Thanks for your support!" — instead, be specific, be interesting, be Blake Mill.
+
+## Post Context
+${post_context}
+
+## Comment to respond to
+"${comment_text}"
+
+## Your task
+1. Classify sentiment: positive, neutral, negative, or inappropriate
+2. Generate a witty, on-brand reply (1-2 sentences). Empty string if inappropriate.
+3. Flag negative/inappropriate for human review.
+
+Return ONLY valid JSON:
+{
+  "sentiment": "positive" | "neutral" | "negative" | "inappropriate",
+  "reply_text": "string",
+  "reply_status": "pending_review" | "flagged"
+}`
+
+    try {
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+
+      if (!claudeRes.ok) {
+        const errText = await claudeRes.text()
+        return jsonResponse({ error: `Claude API error: ${errText}` }, 502)
+      }
+
+      const claudeData = await claudeRes.json() as {
+        content: Array<{ type: string; text: string }>
+      }
+
+      const rawText = claudeData.content
+        .filter((b) => b.type === 'text')
+        .map((b) => b.text)
+        .join('')
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim()
+
+      const parsed = JSON.parse(rawText) as {
+        sentiment: string
+        reply_text: string
+        reply_status: string
+      }
+
+      // If reply_id provided, update the existing reply record
+      if (reply_id) {
+        await client
+          .from('engagement_replies')
+          .update({
+            sentiment: parsed.sentiment,
+            reply_text: parsed.reply_text,
+            reply_status: parsed.reply_status,
+          })
+          .eq('id', reply_id)
+      }
+
+      return jsonResponse({
+        sentiment: parsed.sentiment,
+        reply_text: parsed.reply_text,
+        reply_status: parsed.reply_status,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      return jsonResponse({ error: `Reply generation failed: ${message}` }, 500)
+    }
+  }
+
   return jsonResponse({ error: 'Method not allowed' }, 405)
 })
