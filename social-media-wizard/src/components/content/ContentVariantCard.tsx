@@ -1,8 +1,12 @@
-// T032 — Content variant review card
-import type { ContentVariant } from '@/lib/types'
+// T032 — Content variant review card with platform preview
+import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { SocialPostPreview } from './SocialPostPreview'
+import type { ContentVariant, Platform } from '@/lib/types'
 
 interface ContentVariantCardProps {
   variant: ContentVariant
+  productImage?: string
   onApprove?: () => void
   onReject?: () => void
   onRevise?: () => void
@@ -81,21 +85,47 @@ function DepthGauge({ label, score }: DepthGaugeProps) {
 
 export function ContentVariantCard({
   variant,
+  productImage,
   onApprove,
   onReject,
   onRevise,
 }: ContentVariantCardProps) {
+  const [showPreview, setShowPreview] = useState(false)
   const platformColour =
     PLATFORM_COLOURS[variant.platform] ?? 'bg-muted text-muted-foreground'
 
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm relative flex flex-col gap-4">
-      {/* Platform badge */}
-      <span
-        className={`absolute top-4 right-4 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${platformColour}`}
-      >
-        {platformLabel(variant.platform)}
-      </span>
+      {/* Platform badge + preview toggle */}
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowPreview(!showPreview)}
+          className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          {showPreview ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          {showPreview ? 'Hide' : 'Preview'}
+        </button>
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${platformColour}`}
+        >
+          {platformLabel(variant.platform)}
+        </span>
+      </div>
+
+      {/* Platform preview */}
+      {showPreview && (
+        <div className="flex justify-center pt-6 pb-2">
+          <SocialPostPreview
+            platform={variant.platform as Platform}
+            copyText={variant.copy_text}
+            hashtags={variant.hashtags}
+            callToAction={variant.call_to_action}
+            productImage={productImage}
+            accountName="Blake Mill"
+          />
+        </div>
+      )}
 
       {/* Copy text */}
       <p className="text-sm text-foreground leading-relaxed pr-20 whitespace-pre-wrap">
