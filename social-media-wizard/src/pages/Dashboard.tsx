@@ -18,12 +18,10 @@ type DashboardTab = 'overview' | 'campaigns' | 'analytics'
 type Period = 'today' | '7d' | '30d'
 type ViewMode = 'calendar' | 'timeline'
 
-const DEMO_SPARKLINES = {
-  impressions: [120, 180, 150, 220, 280, 260, 310],
-  clicks: [18, 32, 25, 41, 38, 52, 48],
-  spend: [12, 18, 15, 22, 19, 8, 5],
-  conversions: [3, 5, 2, 7, 4, 6, 8],
-  roi: [1.8, 2.1, 1.5, 2.8, 2.3, 3.1, 3.4],
+// Sparklines derived from chart data when available
+function buildSparkline(chartData: { spend: number; engagement: number; conversions: number }[], key: 'spend' | 'engagement' | 'conversions'): number[] | undefined {
+  if (chartData.length < 2) return undefined
+  return chartData.map((d) => d[key])
 }
 
 const QUICK_ACTIONS = [
@@ -63,18 +61,8 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>('calendar')
   const navigate = useNavigate()
 
-  const { metrics, isLoading } = useDashboard(period)
+  const { metrics, chartData, isLoading } = useDashboard(period)
   const { data: campaigns = [] } = useCampaignsList()
-
-  const chartData = [
-    { date: 'Mon', spend: 12, engagement: 45, conversions: 3 },
-    { date: 'Tue', spend: 18, engagement: 62, conversions: 5 },
-    { date: 'Wed', spend: 15, engagement: 38, conversions: 2 },
-    { date: 'Thu', spend: 22, engagement: 71, conversions: 7 },
-    { date: 'Fri', spend: 19, engagement: 56, conversions: 4 },
-    { date: 'Sat', spend: 8, engagement: 84, conversions: 6 },
-    { date: 'Sun', spend: 5, engagement: 92, conversions: 8 },
-  ]
 
   const activeCampaigns = campaigns.filter((c) => c.status === 'active')
   const scheduledCampaigns = campaigns.filter((c) => c.status === 'scheduled')
@@ -154,36 +142,29 @@ export default function Dashboard() {
             <MetricCard
               label="Impressions"
               value={isLoading ? '—' : formatNumber(metrics?.impressions ?? 0)}
-              trend={{ change_pct: 12.3 }}
-              sparkline={DEMO_SPARKLINES.impressions}
+              sparkline={buildSparkline(chartData, 'engagement')}
               accentColor="#3b82f6"
             />
             <MetricCard
               label="Clicks"
               value={isLoading ? '—' : formatNumber(metrics?.clicks ?? 0)}
-              trend={{ change_pct: 8.7 }}
-              sparkline={DEMO_SPARKLINES.clicks}
               accentColor="#8b5cf6"
             />
             <MetricCard
               label="Spend"
               value={isLoading ? '—' : formatCurrency(metrics?.spend ?? 0)}
-              trend={{ change_pct: -3.2 }}
-              sparkline={DEMO_SPARKLINES.spend}
+              sparkline={buildSparkline(chartData, 'spend')}
               accentColor="#f59e0b"
             />
             <MetricCard
               label="Conversions"
               value={isLoading ? '—' : formatNumber(metrics?.conversions ?? 0)}
-              trend={{ change_pct: 24.1 }}
-              sparkline={DEMO_SPARKLINES.conversions}
+              sparkline={buildSparkline(chartData, 'conversions')}
               accentColor="#22c55e"
             />
             <MetricCard
               label="ROAS"
               value={isLoading ? '—' : `${(metrics?.roi ?? 0).toFixed(1)}x`}
-              trend={{ change_pct: 15.6 }}
-              sparkline={DEMO_SPARKLINES.roi}
               accentColor="#06b6d4"
             />
           </div>
