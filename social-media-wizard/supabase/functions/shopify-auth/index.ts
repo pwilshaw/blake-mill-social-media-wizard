@@ -173,13 +173,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: `Failed to store token: ${upsertError.message}` }, 500)
   }
 
+  // Fetch the real store name from Shopify API
+  let storeName = shop.replace('.myshopify.com', '')
+  try {
+    const shopRes = await fetch(`https://${shop}/admin/api/2024-10/shop.json`, {
+      headers: { 'X-Shopify-Access-Token': tokenData.access_token },
+    })
+    if (shopRes.ok) {
+      const shopData = await shopRes.json() as { shop?: { name?: string } }
+      if (shopData.shop?.name) storeName = shopData.shop.name
+    }
+  } catch { /* use domain fallback */ }
+
   // Also create a channel_accounts entry so it shows in the Channels UI
-  const storeName = shop.replace('.myshopify.com', '')
   await client.from('channel_accounts').upsert(
     {
       platform: 'shopify',
       account_id: `shopify:${shop}`,
-      account_name: `Shopify: ${storeName}`,
+      account_name: storeName,
       access_token: tokenData.access_token,
       token_expires_at: '2099-01-01T00:00:00Z',
       is_active: true,
