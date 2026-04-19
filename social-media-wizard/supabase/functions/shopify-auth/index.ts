@@ -173,6 +173,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: `Failed to store token: ${upsertError.message}` }, 500)
   }
 
+  // Also create a channel_accounts entry so it shows in the Channels UI
+  const storeName = shop.replace('.myshopify.com', '')
+  await client.from('channel_accounts').upsert(
+    {
+      platform: 'shopify',
+      account_id: `shopify:${shop}`,
+      account_name: `Shopify: ${storeName}`,
+      access_token: tokenData.access_token,
+      token_expires_at: '2099-01-01T00:00:00Z',
+      is_active: true,
+    },
+    { onConflict: 'platform,account_id' },
+  )
+
   // Redirect to the app after successful install
   if (appUrl) {
     return redirect(`${appUrl}/channels?shopify=connected&shop=${shop}`)

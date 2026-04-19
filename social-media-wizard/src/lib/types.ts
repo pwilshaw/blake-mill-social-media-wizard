@@ -19,7 +19,7 @@ export type CampaignType =
   | 'holiday'
   | 'scheduled'
 
-export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'google_ads' | 'snapchat'
+export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'google_ads' | 'snapchat' | 'shopify'
 
 export type ApprovalStatus =
   | 'pending'

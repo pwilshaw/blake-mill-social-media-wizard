@@ -135,4 +135,16 @@ export const PLATFORM_FORMATS: Record<Platform, PlatformDefinition> = {
       },
     ],
   },
+
+  shopify: {
+    icon: 'shopping-bag',
+    formats: [
+      {
+        name: 'Product',
+        aspect_ratios: ['1:1', '4:5'],
+        character_limit: 5000,
+        hashtag_limit: 0,
+      },
+    ],
+  },
 }
