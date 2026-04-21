@@ -4,18 +4,20 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import type { ShirtProduct } from '@/lib/types'
+import { TemplatePicker } from '@/components/creatives/TemplatePicker'
 
 interface CampaignWizardProps {
   onComplete: (campaignId: string) => void
 }
 
-const TOTAL_STEPS = 6
+const TOTAL_STEPS = 7
 
 const STEP_LABELS = [
   'Select shirts',
   'Choose channels',
   'Set schedule',
   'Set budget',
+  'Design',
   'Generate content',
   'Review & approve',
 ]
@@ -41,6 +43,7 @@ async function createCampaign(payload: {
   scheduled_end: string | null
   budget_limit: number | null
   shirt_ids: string[]
+  design_template_id: string | null
 }): Promise<string> {
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
@@ -55,6 +58,7 @@ async function createCampaign(payload: {
       budget_spent: 0,
       auto_approved: false,
       target_segments: [],
+      design_template_id: payload.design_template_id,
     })
     .select('id')
     .single()
@@ -251,6 +255,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   const [scheduledStart, setScheduledStart] = useState('')
   const [scheduledEnd, setScheduledEnd] = useState('')
   const [budgetLimit, setBudgetLimit] = useState('')
+  const [designTemplateId, setDesignTemplateId] = useState<string | null>(null)
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null)
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [generationDone, setGenerationDone] = useState(false)
@@ -265,7 +270,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
     mutationFn: createCampaign,
     onSuccess: (id) => {
       setCreatedCampaignId(id)
-      setStep(5)
+      setStep(6)
     },
   })
 
@@ -308,7 +313,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   }
 
   async function handleSaveAndGenerateStep() {
-    // Step 4 → 5: create the campaign then trigger generation
+    // Step 5 (Design) → 6 (Generate): create the campaign then trigger generation
     await createMutation.mutateAsync({
       name: campaignName || 'Untitled Campaign',
       channels: Array.from(selectedChannels),
@@ -316,6 +321,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
       scheduled_end: scheduledEnd || null,
       budget_limit: budgetLimit ? Number(budgetLimit) : null,
       shirt_ids: Array.from(selectedShirtIds),
+      design_template_id: designTemplateId,
     })
   }
 
@@ -518,6 +524,17 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
               Leave blank for no budget cap. The campaign will pause automatically when
               the limit is reached.
             </p>
+          </div>
+        )
+
+      case 5:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-foreground">Design</p>
+            <p className="text-sm text-muted-foreground">
+              Pick a saved template to use for this campaign's creatives, or keep it simple with an auto caption overlay.
+            </p>
+            <TemplatePicker value={designTemplateId} onChange={setDesignTemplateId} />
             {createMutation.error && (
               <p className="text-sm text-destructive">
                 Error: {createMutation.error.message}
@@ -526,7 +543,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Generate content</p>
@@ -561,7 +578,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 6:
+      case 7:
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Review & approve</p>
@@ -631,13 +648,13 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   const canGoNext: boolean = (() => {
     if (step === 1) return selectedShirtIds.size > 0
     if (step === 2) return selectedChannels.size > 0
-    if (step === 4) return !createMutation.isPending
-    if (step === 5) return generationDone
+    if (step === 5) return !createMutation.isPending
+    if (step === 6) return generationDone
     return true
   })()
 
   const isLastStep = step === TOTAL_STEPS
-  const isSaveStep = step === 4
+  const isSaveStep = step === 5
 
   return (
     <div className="mx-auto max-w-2xl">

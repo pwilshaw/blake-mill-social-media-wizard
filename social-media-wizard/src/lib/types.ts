@@ -94,6 +94,7 @@ export interface Campaign {
   auto_approved: boolean
   trigger_rule_id: string | null
   performance_rating: number | null
+  design_template_id: string | null
   created_at: string
   updated_at: string
   shirts?: ShirtProduct[]
@@ -327,6 +328,36 @@ export interface ConversionSummary {
   cpa: number
   conversion_rate: number
   by_channel: Record<Platform, { conversions: number; revenue: number; spend: number }>
+}
+
+// ============================================================
+// Design Templates (Creative Designer)
+// ============================================================
+
+export type { DesignSpec, DesignLayer, BrandPalette } from './design-spec'
+
+export interface DesignTemplate {
+  id: string
+  name: string
+  description: string | null
+  design_spec: import('./design-spec').DesignSpec
+  palette_snapshot: import('./design-spec').BrandPalette | null
+  thumbnail_url: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ShopBrand {
+  id: string
+  shop_domain: string
+  primary_color: string | null
+  secondary_color: string | null
+  background_color: string | null
+  foreground_color: string | null
+  logo_url: string | null
+  square_logo_url: string | null
+  updated_at: string
 }
 
 // ============================================================

@@ -134,6 +134,75 @@ function buildProductsQuery(afterCursor: string | null): string {
 // Fetch all products with pagination
 // ---------------------------------------------------------------------------
 
+interface ShopBrandPayload {
+  primary_color: string | null
+  secondary_color: string | null
+  foreground_color: string | null
+  background_color: string | null
+  logo_url: string | null
+  square_logo_url: string | null
+}
+
+async function fetchShopBrand(
+  storeDomain: string,
+  adminApiToken: string,
+): Promise<ShopBrandPayload | null> {
+  const endpoint = `https://${storeDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`
+  const query = `
+    query {
+      shop {
+        brand {
+          colors {
+            primary { background foreground }
+            secondary { background foreground }
+          }
+          logo { image { url } }
+          squareLogo { image { url } }
+        }
+      }
+    }
+  `
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': adminApiToken,
+      },
+      body: JSON.stringify({ query }),
+    })
+    if (!response.ok) return null
+    const json = (await response.json()) as {
+      data?: {
+        shop?: {
+          brand?: {
+            colors?: {
+              primary?: Array<{ background?: string | null; foreground?: string | null }>
+              secondary?: Array<{ background?: string | null; foreground?: string | null }>
+            }
+            logo?: { image?: { url?: string } | null } | null
+            squareLogo?: { image?: { url?: string } | null } | null
+          } | null
+        }
+      }
+    }
+    const brand = json.data?.shop?.brand
+    if (!brand) return null
+    const primary = brand.colors?.primary?.[0] ?? null
+    const secondary = brand.colors?.secondary?.[0] ?? null
+    return {
+      primary_color: primary?.background ?? null,
+      secondary_color: secondary?.background ?? null,
+      foreground_color: primary?.foreground ?? null,
+      background_color: secondary?.foreground ?? null,
+      logo_url: brand.logo?.image?.url ?? null,
+      square_logo_url: brand.squareLogo?.image?.url ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
 async function fetchAllShopifyProducts(
   storeDomain: string,
   adminApiToken: string,
@@ -320,9 +389,33 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // -----------------------------------------------------------------------
+    // 4. Also sync shop.brand → shop_brand (non-fatal on failure)
+    // -----------------------------------------------------------------------
+    let brandSynced = false
+    try {
+      const brand = await fetchShopBrand(storeDomain, adminApiToken)
+      if (brand) {
+        const { error: brandError } = await client
+          .from('shop_brand')
+          .upsert(
+            {
+              shop_domain: storeDomain,
+              ...brand,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'shop_domain' },
+          )
+        brandSynced = !brandError
+      }
+    } catch {
+      // Brand sync is best-effort — product sync above is the primary contract
+    }
+
     return jsonResponse({
       synced_count: upsertedProducts.length,
       products: upsertedProducts,
+      brand_synced: brandSynced,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

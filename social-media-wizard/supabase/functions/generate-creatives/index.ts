@@ -26,9 +26,9 @@ function jsonResponse(body: unknown, status = 200): Response {
 // Types (mirrors data-model.md)
 // ---------------------------------------------------------------------------
 
-type AspectRatio = '1:1' | '4:5' | '16:9' | '9:16'
+type AspectRatio = '1:1' | '4:5' | '16:9' | '9:16' | '1.91:1'
 
-const VALID_ASPECT_RATIOS: AspectRatio[] = ['1:1', '4:5', '16:9', '9:16']
+const VALID_ASPECT_RATIOS: AspectRatio[] = ['1:1', '4:5', '16:9', '9:16', '1.91:1']
 
 interface ContentVariantRow {
   id: string
@@ -37,11 +37,32 @@ interface ContentVariantRow {
   call_to_action: string | null
 }
 
+interface CampaignRow {
+  id: string
+  design_template_id: string | null
+}
+
+interface DesignTemplateRow {
+  id: string
+  design_spec: Record<string, unknown>
+  palette_snapshot: Record<string, unknown> | null
+}
+
+interface ShopBrandRow {
+  primary_color: string | null
+  secondary_color: string | null
+  foreground_color: string | null
+  background_color: string | null
+  logo_url: string | null
+  square_logo_url: string | null
+}
+
 interface CampaignShirtRow {
   shirt_product_id: string
   shirt_products: {
     images: string[]
     name: string
+    price: number | null
   }
 }
 
@@ -126,11 +147,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // -----------------------------------------------------------------------
-    // 2. Fetch the campaign's shirts (via campaign_shirts join table)
+    // 2. Fetch the campaign (for design_template_id) + shirts + brand
     // -----------------------------------------------------------------------
+    const { data: campaign, error: campaignError } = await client
+      .from('campaigns')
+      .select('id, design_template_id')
+      .eq('id', variant.campaign_id)
+      .single<CampaignRow>()
+
+    if (campaignError) {
+      return jsonResponse({ error: campaignError.message }, 500)
+    }
+
     const { data: campaignShirts, error: shirtsError } = await client
       .from('campaign_shirts')
-      .select('shirt_product_id, shirt_products(images, name)')
+      .select('shirt_product_id, shirt_products(images, name, price)')
       .eq('campaign_id', variant.campaign_id)
       .returns<CampaignShirtRow[]>()
 
@@ -145,8 +176,44 @@ Deno.serve(async (req: Request): Promise<Response> => {
       )
     }
 
+    // Load the design template if the campaign uses one
+    let designSpec: Record<string, unknown> | null = null
+    let palette: Record<string, unknown> | null = null
+
+    if (campaign?.design_template_id) {
+      const { data: tpl } = await client
+        .from('design_templates')
+        .select('id, design_spec, palette_snapshot')
+        .eq('id', campaign.design_template_id)
+        .single<DesignTemplateRow>()
+
+      if (tpl) {
+        designSpec = tpl.design_spec
+        palette = tpl.palette_snapshot
+
+        // Refresh palette from current shop_brand if the template didn't snapshot one
+        if (!palette) {
+          const { data: brand } = await client
+            .from('shop_brand')
+            .select('primary_color, secondary_color, foreground_color, background_color, logo_url, square_logo_url')
+            .limit(1)
+            .maybeSingle<ShopBrandRow>()
+          if (brand) {
+            palette = {
+              primary: brand.primary_color ?? '#1a1a2e',
+              secondary: brand.secondary_color ?? '#e2e8f0',
+              foreground: brand.foreground_color ?? '#0f172a',
+              background: brand.background_color ?? '#ffffff',
+              square_logo_url: brand.square_logo_url,
+              wide_logo_url: brand.logo_url,
+            }
+          }
+        }
+      }
+    }
+
     // -----------------------------------------------------------------------
-    // 3. Build the overlay text from the variant copy
+    // 3. Build the overlay text from the variant copy (legacy / fallback)
     // -----------------------------------------------------------------------
     const overlayText = variant.call_to_action ?? variant.copy_text.slice(0, 80)
 
@@ -165,26 +232,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
         continue
       }
 
+      const productName = shirt.shirt_products?.name ?? ''
+      const productPrice = shirt.shirt_products?.price
+      const priceStr = typeof productPrice === 'number' ? `£${productPrice.toFixed(0)}` : ''
+
       for (const ratio of validRatios) {
         let generatedUrl = primaryImage // fallback if Vercel call fails
 
         try {
+          const body: Record<string, unknown> = {
+            product_image_url: primaryImage,
+            aspect_ratio: ratio,
+          }
+          if (designSpec) {
+            body.design_spec = designSpec
+            body.palette = palette
+            body.vars = {
+              product_name: productName.toUpperCase(),
+              price: priceStr,
+              cta: variant.call_to_action ?? 'Shop now',
+            }
+          } else {
+            body.overlay_text = overlayText
+          }
+
           const generateRes = await fetch(generateImageEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              product_image_url: primaryImage,
-              overlay_text: overlayText,
-              aspect_ratio: ratio,
-            }),
+            body: JSON.stringify(body),
           })
 
           if (generateRes.ok) {
             const generateData = await generateRes.json() as { generated_image_url: string }
             generatedUrl = generateData.generated_image_url ?? primaryImage
           }
-          // If the call fails we still insert a record with the source image so the
-          // asset exists and can be regenerated later.
         } catch {
           // Network error — continue with fallback URL
         }

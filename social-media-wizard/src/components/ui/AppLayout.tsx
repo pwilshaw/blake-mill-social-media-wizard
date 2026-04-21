@@ -12,6 +12,7 @@ import {
   Bot,
   BarChart3,
   Globe,
+  Layers,
   LogOut,
   Menu,
   X,
@@ -26,6 +27,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/campaigns', label: 'Campaigns', icon: Megaphone },
+      { to: '/creative-templates', label: 'Templates', icon: Layers },
       { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },

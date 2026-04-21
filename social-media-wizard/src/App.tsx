@@ -11,6 +11,8 @@ const Campaigns = lazy(() => import('@/pages/Campaigns'))
 const CampaignDetail = lazy(() => import('@/pages/CampaignDetail'))
 const ContentReview = lazy(() => import('@/pages/ContentReview'))
 const CreativeGallery = lazy(() => import('@/pages/CreativeGallery'))
+const CreativeTemplates = lazy(() => import('@/pages/CreativeTemplates'))
+const CreativeTemplateEditor = lazy(() => import('@/pages/CreativeTemplateEditor'))
 const Calendar = lazy(() => import('@/pages/Calendar'))
 const Channels = lazy(() => import('@/pages/Channels'))
 const Segments = lazy(() => import('@/pages/Segments'))
@@ -52,6 +54,8 @@ function ProtectedApp() {
             <Route path="campaigns/:id" element={<CampaignDetail />} />
             <Route path="campaigns/:id/content" element={<ContentReview />} />
             <Route path="campaigns/:id/creatives" element={<CreativeGallery />} />
+            <Route path="creative-templates" element={<CreativeTemplates />} />
+            <Route path="creative-templates/:id" element={<CreativeTemplateEditor />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="channels" element={<Channels />} />
             <Route path="channels/select" element={<ChannelSelectPages />} />
