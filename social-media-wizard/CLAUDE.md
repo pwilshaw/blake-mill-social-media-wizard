@@ -66,7 +66,7 @@ npm run test             # Run tests
 
 ## Key Decisions
 
-- No Supabase CLI — deploy via dashboard only
+- Supabase CLI is fine — use `supabase db push` for migrations and `supabase functions deploy <name>` for edge functions. Project is already linked to `lsslorfkwtmmgbhjtdto`.
 - Image compositing via Vercel serverless (sharp) not Edge Functions (Deno)
 - Content requires approval by default; pre-approved templates can auto-publish
 - Single user (owner) — no multi-user auth needed initially
