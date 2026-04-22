@@ -29,7 +29,7 @@ async function fetchSegments(
 
 async function triggerKlaviyoSync(): Promise<{ synced_count: number }> {
   const { data, error } = await supabase.functions.invoke<{ synced_count: number }>(
-    'segments/sync-klaviyo',
+    'sync-klaviyo',
     { method: 'POST' }
   )
   if (error) throw new Error(error.message)
