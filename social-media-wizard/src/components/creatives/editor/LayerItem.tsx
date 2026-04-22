@@ -158,8 +158,15 @@ export function LayerItem({
         {logoSrc ? (
           <img src={logoSrc} alt="" className="h-full w-full object-contain" draggable={false} />
         ) : (
-          <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-muted-foreground/40 bg-muted/60 text-[10px] uppercase tracking-widest text-muted-foreground">
-            Logo
+          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 rounded border border-dashed border-muted-foreground/40 bg-muted/60 px-1 text-center text-[9px] leading-tight uppercase tracking-wider text-muted-foreground">
+            <span>No logo</span>
+            <a
+              href="/integrations"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[9px] lowercase tracking-normal text-primary underline"
+            >
+              upload one
+            </a>
           </div>
         )}
         {selected && <RotateHandle onPointerDown={handleRotatePointerDown} onPointerMove={handleRotatePointerMove} onPointerUp={handleRotatePointerUp} />}
