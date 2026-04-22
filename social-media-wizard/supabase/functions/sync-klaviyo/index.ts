@@ -122,14 +122,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed' }, 405)
   }
 
-  const klaviyoApiKey = Deno.env.get('KLAVIYO_API_KEY')
-  if (!klaviyoApiKey) {
-    return jsonResponse({ error: 'KLAVIYO_API_KEY env var not set' }, 500)
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  // Priority: env-var secret > integration_credentials row (UI-managed).
+  let klaviyoApiKey = Deno.env.get('KLAVIYO_API_KEY') ?? ''
+  if (!klaviyoApiKey) {
+    const { data: integration } = await client
+      .from('integration_credentials')
+      .select('credentials')
+      .eq('provider', 'klaviyo')
+      .maybeSingle<{ credentials: { api_key?: string } }>()
+    klaviyoApiKey = integration?.credentials?.api_key ?? ''
+  }
+  if (!klaviyoApiKey) {
+    return jsonResponse(
+      { error: 'No Klaviyo API key configured. Add one in Segments → Connect Klaviyo.' },
+      500,
+    )
+  }
 
   try {
     const klaviyoSegments = await fetchKlaviyoSegments(klaviyoApiKey)

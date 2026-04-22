@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import type { CustomerSegment, SegmentSource, StylePreference } from '@/lib/types'
 import { SegmentCard } from '@/components/segments/SegmentCard'
 import { SurveyImporter } from '@/components/segments/SurveyImporter'
+import { KlaviyoConnector } from '@/components/segments/KlaviyoConnector'
 
 // ----------------------------------------------------------------
 // Data fetching
@@ -169,6 +170,9 @@ export default function Segments() {
           {syncMessage}
         </div>
       )}
+
+      {/* Klaviyo connector */}
+      <KlaviyoConnector />
 
       {/* Survey importer panel */}
       {showImporter && (
