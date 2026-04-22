@@ -29,6 +29,8 @@ export type ApprovalStatus =
 
 export type AssetType = 'image' | 'carousel_slide' | 'video_thumbnail'
 
+export type PostType = 'single' | 'carousel'
+
 export type AspectRatio = '1:1' | '4:5' | '16:9' | '9:16'
 
 export type PostStatus = 'queued' | 'published' | 'failed' | 'removed'
@@ -95,6 +97,7 @@ export interface Campaign {
   trigger_rule_id: string | null
   performance_rating: number | null
   design_template_id: string | null
+  post_type: PostType
   created_at: string
   updated_at: string
   shirts?: ShirtProduct[]

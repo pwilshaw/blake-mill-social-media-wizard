@@ -40,6 +40,7 @@ interface ContentVariantRow {
 interface CampaignRow {
   id: string
   design_template_id: string | null
+  post_type: 'single' | 'carousel'
 }
 
 interface DesignTemplateRow {
@@ -68,7 +69,7 @@ interface CampaignShirtRow {
 
 interface CreativeAssetInsert {
   content_variant_id: string
-  asset_type: 'image'
+  asset_type: 'image' | 'carousel_slide'
   source_product_image_url: string
   generated_image_url: string
   overlay_text: string | null
@@ -151,7 +152,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // -----------------------------------------------------------------------
     const { data: campaign, error: campaignError } = await client
       .from('campaigns')
-      .select('id, design_template_id')
+      .select('id, design_template_id, post_type')
       .eq('id', variant.campaign_id)
       .single<CampaignRow>()
 
@@ -220,24 +221,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // -----------------------------------------------------------------------
     // 4. For each shirt × aspect ratio, call Vercel generate-image
     // -----------------------------------------------------------------------
+    // In single-post mode we emit one 'image' per (shirt × ratio) with a
+    // globally-incrementing slide_order.
+    // In carousel mode we emit 'carousel_slide' assets, resetting slide_order
+    // per ratio so each ratio has its own 1..N sequence.
+    const isCarousel = campaign?.post_type === 'carousel'
     const assetInserts: CreativeAssetInsert[] = []
-    let slideOrder = 1
+    let singleSlideOrder = 1
 
-    for (const shirt of campaignShirts) {
-      const images: string[] = shirt.shirt_products?.images ?? []
-      const primaryImage = images[0]
+    for (const ratio of validRatios) {
+      let carouselSlideOrder = 1
+      for (const shirt of campaignShirts) {
+        const images: string[] = shirt.shirt_products?.images ?? []
+        const primaryImage = images[0]
+        if (!primaryImage) continue
 
-      if (!primaryImage) {
-        // Skip shirts with no images rather than failing the whole batch
-        continue
-      }
+        const productName = shirt.shirt_products?.name ?? ''
+        const productPrice = shirt.shirt_products?.price
+        const priceStr = typeof productPrice === 'number' ? `£${productPrice.toFixed(0)}` : ''
 
-      const productName = shirt.shirt_products?.name ?? ''
-      const productPrice = shirt.shirt_products?.price
-      const priceStr = typeof productPrice === 'number' ? `£${productPrice.toFixed(0)}` : ''
-
-      for (const ratio of validRatios) {
-        let generatedUrl = primaryImage // fallback if Vercel call fails
+        let generatedUrl = primaryImage
 
         try {
           const body: Record<string, unknown> = {
@@ -272,12 +275,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
         assetInserts.push({
           content_variant_id: variant.id,
-          asset_type: 'image',
+          asset_type: isCarousel ? 'carousel_slide' : 'image',
           source_product_image_url: primaryImage,
           generated_image_url: generatedUrl,
           overlay_text: overlayText,
           aspect_ratio: ratio,
-          slide_order: slideOrder++,
+          slide_order: isCarousel ? carouselSlideOrder++ : singleSlideOrder++,
           approval_status: 'pending',
         })
       }

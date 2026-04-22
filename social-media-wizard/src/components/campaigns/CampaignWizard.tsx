@@ -44,6 +44,7 @@ async function createCampaign(payload: {
   budget_limit: number | null
   shirt_ids: string[]
   design_template_id: string | null
+  post_type: 'single' | 'carousel'
 }): Promise<string> {
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
@@ -59,6 +60,7 @@ async function createCampaign(payload: {
       auto_approved: false,
       target_segments: [],
       design_template_id: payload.design_template_id,
+      post_type: payload.post_type,
     })
     .select('id')
     .single()
@@ -256,6 +258,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   const [scheduledEnd, setScheduledEnd] = useState('')
   const [budgetLimit, setBudgetLimit] = useState('')
   const [designTemplateId, setDesignTemplateId] = useState<string | null>(null)
+  const [postType, setPostType] = useState<'single' | 'carousel'>('single')
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null)
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [generationDone, setGenerationDone] = useState(false)
@@ -322,6 +325,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
       budget_limit: budgetLimit ? Number(budgetLimit) : null,
       shirt_ids: Array.from(selectedShirtIds),
       design_template_id: designTemplateId,
+      post_type: postType,
     })
   }
 
@@ -535,6 +539,48 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
               Pick a saved template to use for this campaign's creatives, or keep it simple with an auto caption overlay.
             </p>
             <TemplatePicker value={designTemplateId} onChange={setDesignTemplateId} />
+
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Post format
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPostType('single')}
+                  aria-pressed={postType === 'single'}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    postType === 'single'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-background hover:bg-muted/30'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">Single posts</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    One post per shirt. Best for variety across a feed.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPostType('carousel')}
+                  aria-pressed={postType === 'carousel'}
+                  disabled={selectedShirtIds.size < 2}
+                  className={`rounded-lg border p-3 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    postType === 'carousel'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-background hover:bg-muted/30'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">Carousel</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selectedShirtIds.size < 2
+                      ? 'Select 2+ shirts to enable.'
+                      : 'One swipeable post with all selected shirts.'}
+                  </p>
+                </button>
+              </div>
+            </div>
+
             {createMutation.error && (
               <p className="text-sm text-destructive">
                 Error: {createMutation.error.message}
