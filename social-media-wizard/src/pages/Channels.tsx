@@ -79,6 +79,32 @@ async function updateDefaultBudget(id: string, limit: number | null): Promise<vo
   if (error) throw new Error(error.message)
 }
 
+interface ShopifySyncResult {
+  synced_count: number
+  brand_synced: boolean
+}
+
+async function syncShopifyNow(shopDomain?: string): Promise<ShopifySyncResult> {
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-shopify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify(shopDomain ? { shop_domain: shopDomain } : {}),
+  })
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(err.error ?? `Sync failed (HTTP ${res.status})`)
+  }
+  const data = (await res.json()) as { synced_count?: number; brand_synced?: boolean }
+  return {
+    synced_count: data.synced_count ?? 0,
+    brand_synced: Boolean(data.brand_synced),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Token expiry helpers
 // ---------------------------------------------------------------------------
@@ -101,6 +127,7 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
   const [budgetInput, setBudgetInput] = useState(
     account.default_budget_limit !== null ? String(account.default_budget_limit) : ''
   )
+  const [syncStatus, setSyncStatus] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null)
 
   const { mutate: savebudget, isPending } = useMutation({
     mutationFn: () => {
@@ -113,9 +140,32 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
     },
   })
 
+  const { mutate: runSync, isPending: isSyncing } = useMutation({
+    mutationFn: () => syncShopifyNow(account.account_id),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['shirt_products'] })
+      queryClient.invalidateQueries({ queryKey: ['shop_brand'] })
+      if (result.synced_count === 0) {
+        setSyncStatus({ kind: 'warn', text: 'Sync succeeded but no products returned.' })
+      } else if (!result.brand_synced) {
+        setSyncStatus({
+          kind: 'warn',
+          text: `Synced ${result.synced_count} product${result.synced_count === 1 ? '' : 's'}. Brand colours not available — add read_shop_settings scope or configure shop.brand in Shopify.`,
+        })
+      } else {
+        setSyncStatus({
+          kind: 'ok',
+          text: `Synced ${result.synced_count} product${result.synced_count === 1 ? '' : 's'} and brand palette.`,
+        })
+      }
+    },
+    onError: (err: Error) => setSyncStatus({ kind: 'err', text: err.message }),
+  })
+
   const expiry = tokenExpiryLabel(account.token_expires_at)
   const platformInfo = PLATFORM_META[account.platform] ?? { label: account.platform, color: 'text-foreground', bgColor: 'bg-muted' }
   const accountType = detectAccountType(account)
+  const isShopify = account.platform === 'shopify'
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -194,8 +244,36 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
         )}
       </div>
 
-      {/* Disconnect */}
-      <div className="border-t border-border pt-2 flex justify-end">
+      {/* Shopify sync status */}
+      {isShopify && syncStatus && (
+        <div
+          className={`rounded-md px-2 py-1.5 text-xs ${
+            syncStatus.kind === 'ok'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : syncStatus.kind === 'warn'
+                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                : 'bg-destructive/10 text-destructive border border-destructive/40'
+          }`}
+          role="status"
+        >
+          {syncStatus.text}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="border-t border-border pt-2 flex items-center justify-between gap-2">
+        {isShopify ? (
+          <button
+            type="button"
+            onClick={() => runSync()}
+            disabled={isSyncing}
+            className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSyncing ? 'Syncing…' : 'Sync products & brand'}
+          </button>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           onClick={() => {
