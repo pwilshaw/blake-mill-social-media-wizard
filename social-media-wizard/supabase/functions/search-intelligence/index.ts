@@ -3,6 +3,7 @@
 // Results cached in Supabase to minimise API calls.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const DAILY_SEARCH_CAP = 15
 const MONTHLY_SEARCH_CAP = 80
@@ -277,12 +278,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed. Use POST.' }, 405)
   }
 
-  const apiKey = Deno.env.get('SERPAPI_KEY')
-  if (!apiKey) return jsonResponse({ error: 'SERPAPI_KEY not configured.' }, 500)
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const db = createClient(supabaseUrl, serviceRoleKey)
+
+  const apiKey = await getIntegrationKey(db, {
+    provider: 'serpapi',
+    envVars: ['SERPAPI_KEY'],
+  })
+  if (!apiKey) {
+    return jsonResponse({ error: 'SerpAPI key not configured. Add one in Integrations.' }, 500)
+  }
 
   let body: { action?: string; query?: string; location?: string; city?: string }
   try { body = await req.json() } catch { return jsonResponse({ error: 'Invalid JSON body.' }, 400) }

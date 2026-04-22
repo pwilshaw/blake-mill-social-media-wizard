@@ -13,6 +13,7 @@ import {
   BarChart3,
   Globe,
   Layers,
+  KeyRound,
   LogOut,
   Menu,
   X,
@@ -47,6 +48,7 @@ const NAV_SECTIONS = [
       { to: '/triggers', label: 'Triggers', icon: Zap },
       { to: '/budget', label: 'Budget', icon: Wallet },
       { to: '/engagement', label: 'Engagement', icon: MessageSquare },
+      { to: '/integrations', label: 'Integrations', icon: KeyRound },
     ],
   },
 ]

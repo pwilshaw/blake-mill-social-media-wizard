@@ -1,5 +1,6 @@
 // T055 — Deno Edge Function: sync customer segments from Klaviyo API
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -126,19 +127,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
 
-  // Priority: env-var secret > integration_credentials row (UI-managed).
-  let klaviyoApiKey = Deno.env.get('KLAVIYO_API_KEY') ?? ''
-  if (!klaviyoApiKey) {
-    const { data: integration } = await client
-      .from('integration_credentials')
-      .select('credentials')
-      .eq('provider', 'klaviyo')
-      .maybeSingle<{ credentials: { api_key?: string } }>()
-    klaviyoApiKey = integration?.credentials?.api_key ?? ''
-  }
+  const klaviyoApiKey = await getIntegrationKey(client, {
+    provider: 'klaviyo',
+    envVars: ['KLAVIYO_API_KEY'],
+  })
   if (!klaviyoApiKey) {
     return jsonResponse(
-      { error: 'No Klaviyo API key configured. Add one in Segments → Connect Klaviyo.' },
+      { error: 'No Klaviyo API key configured. Add one in Integrations.' },
       500,
     )
   }

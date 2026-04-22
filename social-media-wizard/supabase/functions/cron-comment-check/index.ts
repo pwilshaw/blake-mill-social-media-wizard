@@ -3,6 +3,7 @@
 // classifies sentiment via Claude, generates replies, and stores EngagementReply records.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -198,19 +199,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response(null, { status: 204, headers: CORS_HEADERS })
   }
 
-  const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const client = createClient(supabaseUrl, serviceRoleKey)
+
+  const anthropicKey = await getIntegrationKey(client, {
+    provider: 'anthropic',
+    envVars: ['ANTHROPIC_API_KEY'],
+  })
   if (!anthropicKey) {
-    return jsonResponse({ error: 'ANTHROPIC_API_KEY is not configured' }, 500)
+    return jsonResponse({ error: 'Anthropic API key not configured. Add one in Integrations.' }, 500)
   }
 
   const metaAccessToken = Deno.env.get('META_ACCESS_TOKEN')
   if (!metaAccessToken) {
     return jsonResponse({ error: 'META_ACCESS_TOKEN is not configured' }, 500)
   }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const client = createClient(supabaseUrl, serviceRoleKey)
 
   // Fetch all published posts with their channel account info
   const { data: posts, error: postsError } = await client

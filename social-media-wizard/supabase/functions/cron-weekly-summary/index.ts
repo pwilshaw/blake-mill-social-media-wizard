@@ -9,6 +9,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.39.0'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,16 +123,23 @@ Highlight the most important trend, any concern worth addressing, and one action
 Deno.serve(async (_req: Request): Promise<Response> => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')
 
-  if (!supabaseUrl || !serviceRoleKey || !anthropicApiKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse(
-      { error: 'Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY' },
+      { error: 'Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY' },
       500,
     )
   }
 
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  const anthropicApiKey = await getIntegrationKey(client, {
+    provider: 'anthropic',
+    envVars: ['ANTHROPIC_API_KEY'],
+  })
+  if (!anthropicApiKey) {
+    return jsonResponse({ error: 'Anthropic API key not configured. Add one in Integrations.' }, 500)
+  }
   const now = new Date()
   const sevenDaysAgo = new Date(now)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)

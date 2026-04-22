@@ -3,6 +3,7 @@
 // Body: { campaign_id: string, shirt_ids: string[], platform: string, context_overrides?: object }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -291,14 +292,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed' }, 405)
   }
 
-  const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!anthropicKey) {
-    return jsonResponse({ error: 'ANTHROPIC_API_KEY is not configured' }, 500)
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  const anthropicKey = await getIntegrationKey(client, {
+    provider: 'anthropic',
+    envVars: ['ANTHROPIC_API_KEY'],
+  })
+  if (!anthropicKey) {
+    return jsonResponse({ error: 'Anthropic API key not configured. Add one in Integrations.' }, 500)
+  }
 
   // Parse body
   let body: {

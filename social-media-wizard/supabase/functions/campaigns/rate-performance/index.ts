@@ -9,6 +9,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.24.3'
+import { getIntegrationKey } from '../../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -109,9 +110,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')!
-
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  const anthropicApiKey = await getIntegrationKey(client, {
+    provider: 'anthropic',
+    envVars: ['ANTHROPIC_API_KEY'],
+  })
+  if (!anthropicApiKey) {
+    return jsonResponse({ error: 'Anthropic API key not configured. Add one in Integrations.' }, 500)
+  }
   const anthropic = new Anthropic({ apiKey: anthropicApiKey })
 
   let body: RateRequestBody

@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { CustomerSegment, SegmentSource, StylePreference } from '@/lib/types'
+import { Users } from 'lucide-react'
 import { SegmentCard } from '@/components/segments/SegmentCard'
 import { SurveyImporter } from '@/components/segments/SurveyImporter'
-import { KlaviyoConnector } from '@/components/segments/KlaviyoConnector'
+import { ProviderConnector } from '@/components/integrations/ProviderConnector'
 
 // ----------------------------------------------------------------
 // Data fetching
@@ -171,8 +172,17 @@ export default function Segments() {
         </div>
       )}
 
-      {/* Klaviyo connector */}
-      <KlaviyoConnector />
+      {/* Klaviyo connector (also surfaced on /integrations) */}
+      <ProviderConnector
+        spec={{
+          provider: 'klaviyo',
+          label: 'Klaviyo',
+          description: 'Paste a private API key (starts with pk_) with read access to Segments and Profiles.',
+          docsUrl: 'https://www.klaviyo.com/account#api-keys-tab',
+          icon: Users,
+          placeholder: 'pk_...',
+        }}
+      />
 
       {/* Survey importer panel */}
       {showImporter && (

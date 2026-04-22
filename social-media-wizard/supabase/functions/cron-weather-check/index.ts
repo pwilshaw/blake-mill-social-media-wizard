@@ -2,6 +2,7 @@
 // Fetches UK 7-day forecast, evaluates active weather triggers, creates campaigns for matches.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -69,14 +70,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed — use POST' }, 405)
   }
 
-  const weatherApiKey = Deno.env.get('WEATHERAPI_KEY')
-  if (!weatherApiKey) {
-    return jsonResponse({ error: 'WEATHERAPI_KEY not configured' }, 500)
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  const weatherApiKey = await getIntegrationKey(client, {
+    provider: 'weatherapi',
+    envVars: ['WEATHERAPI_KEY'],
+  })
+  if (!weatherApiKey) {
+    return jsonResponse({ error: 'WeatherAPI key not configured. Add one in Integrations.' }, 500)
+  }
 
   try {
     // -------------------------------------------------------

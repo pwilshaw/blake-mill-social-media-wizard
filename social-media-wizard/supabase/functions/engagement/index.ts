@@ -3,6 +3,7 @@
 // PATCH /functions/v1/engagement                               — update reply status / text
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -137,9 +138,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // POST — generate AI reply for a comment using Claude
   // -------------------------------------------------------------------------
   if (req.method === 'POST') {
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+    const anthropicKey = await getIntegrationKey(client, {
+      provider: 'anthropic',
+      envVars: ['ANTHROPIC_API_KEY'],
+    })
     if (!anthropicKey) {
-      return jsonResponse({ error: 'ANTHROPIC_API_KEY is not configured' }, 500)
+      return jsonResponse({ error: 'Anthropic API key not configured. Add one in Integrations.' }, 500)
     }
 
     let body: { comment_text: string; post_context?: string; reply_id?: string }

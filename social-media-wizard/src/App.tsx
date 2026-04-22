@@ -23,6 +23,7 @@ const MediaBuyer = lazy(() => import('@/pages/MediaBuyer'))
 const Conversions = lazy(() => import('@/pages/Conversions'))
 const ChannelSelectPages = lazy(() => import('@/pages/ChannelSelectPages'))
 const SearchIntelligence = lazy(() => import('@/pages/SearchIntelligence'))
+const Integrations = lazy(() => import('@/pages/Integrations'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
 const Terms = lazy(() => import('@/pages/Terms'))
 
@@ -66,6 +67,7 @@ function ProtectedApp() {
             <Route path="media-buyer" element={<MediaBuyer />} />
             <Route path="conversions" element={<Conversions />} />
             <Route path="search" element={<SearchIntelligence />} />
+            <Route path="integrations" element={<Integrations />} />
           </Route>
         </Routes>
       </AppProvider>

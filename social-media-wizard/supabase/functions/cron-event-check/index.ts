@@ -2,6 +2,7 @@
 // Fetches UK events from PredictHQ + Ticketmaster, matches to trigger keywords, creates campaigns.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -149,19 +150,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: 'Method not allowed — use POST' }, 405)
   }
 
-  const predictHQToken = Deno.env.get('PREDICTHQ_API_TOKEN')
-  const ticketmasterKey = Deno.env.get('TICKETMASTER_API_KEY')
-
-  if (!predictHQToken && !ticketmasterKey) {
-    return jsonResponse(
-      { error: 'At least one of PREDICTHQ_API_TOKEN or TICKETMASTER_API_KEY must be set' },
-      500,
-    )
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const client = createClient(supabaseUrl, serviceRoleKey)
+
+  const [predictHQToken, ticketmasterKey] = await Promise.all([
+    getIntegrationKey(client, { provider: 'predicthq', envVars: ['PREDICTHQ_API_TOKEN'] }),
+    getIntegrationKey(client, { provider: 'ticketmaster', envVars: ['TICKETMASTER_API_KEY'] }),
+  ])
+
+  if (!predictHQToken && !ticketmasterKey) {
+    return jsonResponse(
+      { error: 'No event provider configured. Add a PredictHQ or Ticketmaster key in Integrations.' },
+      500,
+    )
+  }
 
   try {
     // -------------------------------------------------------
