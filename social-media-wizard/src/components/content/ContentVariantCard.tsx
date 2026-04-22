@@ -1,8 +1,14 @@
 // T032 — Content variant review card with platform preview
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Check, X } from 'lucide-react'
 import { SocialPostPreview } from './SocialPostPreview'
 import type { ContentVariant, Platform } from '@/lib/types'
+
+interface ContentVariantEdit {
+  copy_text: string
+  hashtags: string[]
+  call_to_action: string | null
+}
 
 interface ContentVariantCardProps {
   variant: ContentVariant
@@ -10,6 +16,8 @@ interface ContentVariantCardProps {
   onApprove?: () => void
   onReject?: () => void
   onRevise?: () => void
+  onSave?: (edit: ContentVariantEdit) => void | Promise<void>
+  isSaving?: boolean
 }
 
 const PLATFORM_COLOURS: Record<string, string> = {
@@ -89,15 +97,53 @@ export function ContentVariantCard({
   onApprove,
   onReject,
   onRevise,
+  onSave,
+  isSaving,
 }: ContentVariantCardProps) {
   const [showPreview, setShowPreview] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editCopy, setEditCopy] = useState(variant.copy_text)
+  const [editTags, setEditTags] = useState(variant.hashtags.join(', '))
+  const [editCta, setEditCta] = useState(variant.call_to_action ?? '')
+
   const platformColour =
     PLATFORM_COLOURS[variant.platform] ?? 'bg-muted text-muted-foreground'
 
+  function startEdit() {
+    setEditCopy(variant.copy_text)
+    setEditTags(variant.hashtags.join(', '))
+    setEditCta(variant.call_to_action ?? '')
+    setIsEditing(true)
+  }
+
+  async function handleSave() {
+    if (!onSave) return
+    const parsedTags = editTags
+      .split(',')
+      .map((t) => t.trim().replace(/^#/, ''))
+      .filter(Boolean)
+    await onSave({
+      copy_text: editCopy,
+      hashtags: parsedTags,
+      call_to_action: editCta.trim() === '' ? null : editCta.trim(),
+    })
+    setIsEditing(false)
+  }
+
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm relative flex flex-col gap-4">
-      {/* Platform badge + preview toggle */}
+      {/* Header row: angle/variant chips + platform + preview toggle */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
+        {variant.angle_label && (
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+            {variant.angle_label}
+          </span>
+        )}
+        {variant.variant_number > 1 && (
+          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            v{variant.variant_number}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setShowPreview(!showPreview)}
@@ -127,30 +173,84 @@ export function ContentVariantCard({
         </div>
       )}
 
-      {/* Copy text */}
-      <p className="text-sm text-foreground leading-relaxed pr-20 whitespace-pre-wrap">
-        {variant.copy_text}
-      </p>
-
-      {/* Hashtags */}
-      {variant.hashtags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {variant.hashtags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-            >
-              #{tag}
+      {/* Copy / hashtags / CTA — read or edit */}
+      {isEditing ? (
+        <div className="space-y-3 pr-20">
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Copy</span>
+            <textarea
+              value={editCopy}
+              onChange={(e) => setEditCopy(e.target.value)}
+              rows={4}
+              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Hashtags (comma-separated, no #)
             </span>
-          ))}
+            <input
+              type="text"
+              value={editTags}
+              onChange={(e) => setEditTags(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="shirt, blakemill, madeinbritain"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Call to action</span>
+            <input
+              type="text"
+              value={editCta}
+              onChange={(e) => setEditCta(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Shop now"
+            />
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Check className="h-3 w-3" />
+              {isSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              disabled={isSaving}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
+            >
+              <X className="h-3 w-3" />
+              Cancel
+            </button>
+          </div>
         </div>
-      )}
-
-      {/* CTA */}
-      {variant.call_to_action && (
-        <p className="text-xs font-semibold text-primary">
-          CTA: {variant.call_to_action}
-        </p>
+      ) : (
+        <>
+          <p className="text-sm text-foreground leading-relaxed pr-20 whitespace-pre-wrap">
+            {variant.copy_text}
+          </p>
+          {variant.hashtags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {variant.hashtags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {variant.call_to_action && (
+            <p className="text-xs font-semibold text-primary">
+              CTA: {variant.call_to_action}
+            </p>
+          )}
+        </>
       )}
 
       {/* DEPTH score gauges */}
@@ -176,6 +276,16 @@ export function ContentVariantCard({
 
       {/* Action buttons */}
       <div className="flex gap-2 pt-1">
+        {onSave && !isEditing && (
+          <button
+            type="button"
+            onClick={startEdit}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </button>
+        )}
         {onApprove && (
           <button
             type="button"

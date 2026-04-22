@@ -24,6 +24,7 @@ const Conversions = lazy(() => import('@/pages/Conversions'))
 const ChannelSelectPages = lazy(() => import('@/pages/ChannelSelectPages'))
 const SearchIntelligence = lazy(() => import('@/pages/SearchIntelligence'))
 const Integrations = lazy(() => import('@/pages/Integrations'))
+const Insights = lazy(() => import('@/pages/Insights'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
 const Terms = lazy(() => import('@/pages/Terms'))
 
@@ -68,6 +69,7 @@ function ProtectedApp() {
             <Route path="conversions" element={<Conversions />} />
             <Route path="search" element={<SearchIntelligence />} />
             <Route path="integrations" element={<Integrations />} />
+            <Route path="insights" element={<Insights />} />
           </Route>
         </Routes>
       </AppProvider>

@@ -98,6 +98,7 @@ export interface Campaign {
   performance_rating: number | null
   design_template_id: string | null
   post_type: PostType
+  is_organic: boolean
   created_at: string
   updated_at: string
   shirts?: ShirtProduct[]
@@ -111,6 +112,8 @@ export interface ContentVariant {
   hashtags: string[]
   call_to_action: string | null
   approval_status: ApprovalStatus
+  variant_number: number
+  angle_label: string | null
   depth_score_clarity: number
   depth_score_persuasion: number
   depth_score_actionability: number

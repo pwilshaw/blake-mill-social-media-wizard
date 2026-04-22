@@ -39,6 +39,25 @@ async function updateApprovalStatus(
   if (error) throw new Error(error.message)
 }
 
+interface VariantEdit {
+  copy_text: string
+  hashtags: string[]
+  call_to_action: string | null
+}
+
+async function updateVariantCopy(id: string, edit: VariantEdit): Promise<void> {
+  const { error } = await supabase
+    .from('content_variants')
+    .update({
+      copy_text: edit.copy_text,
+      hashtags: edit.hashtags,
+      call_to_action: edit.call_to_action,
+    })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+}
+
 export default function ContentReview() {
   const { id: campaignId } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -55,6 +74,13 @@ export default function ContentReview() {
 
   const statusMutation = useMutation<void, Error, { id: string; status: ApprovalStatus }>({
     mutationFn: ({ id, status }) => updateApprovalStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content_variants', campaignId] })
+    },
+  })
+
+  const editMutation = useMutation<void, Error, { id: string; edit: VariantEdit }>({
+    mutationFn: ({ id, edit }) => updateVariantCopy(id, edit),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content_variants', campaignId] })
     },
@@ -233,6 +259,8 @@ export default function ContentReview() {
                 onApprove={() => handleApprove(variant.id)}
                 onReject={() => handleReject(variant.id)}
                 onRevise={() => handleRevise(variant.id)}
+                onSave={(edit) => editMutation.mutateAsync({ id: variant.id, edit })}
+                isSaving={editMutation.isPending && editMutation.variables?.id === variant.id}
               />
             </div>
           ))}

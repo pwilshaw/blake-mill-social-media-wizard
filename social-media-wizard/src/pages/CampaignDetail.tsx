@@ -110,9 +110,14 @@ export default function CampaignDetail() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
             <CampaignStatusBadge status={campaign.status} />
+            {campaign.is_organic && (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+                Organic
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground capitalize">
             {campaign.campaign_type.replace('_', ' ')} &middot; Created {formatDate(campaign.created_at)}
@@ -176,7 +181,7 @@ export default function CampaignDetail() {
       )}
 
       {/* Metrics grid */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className={`grid grid-cols-2 gap-3 ${campaign.is_organic ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <Eye className="h-3.5 w-3.5" />
@@ -191,20 +196,22 @@ export default function CampaignDetail() {
           </div>
           <p className="mt-1 text-2xl font-bold tabular-nums">—</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <PoundSterling className="h-3.5 w-3.5" />
-            Spend
+        {!campaign.is_organic && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <PoundSterling className="h-3.5 w-3.5" />
+              Spend
+            </div>
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {formatCurrency(campaign.budget_spent)}
+              {campaign.budget_limit && (
+                <span className="text-sm text-muted-foreground font-normal">
+                  {' '}/ {formatCurrency(campaign.budget_limit)}
+                </span>
+              )}
+            </p>
           </div>
-          <p className="mt-1 text-2xl font-bold tabular-nums">
-            {formatCurrency(campaign.budget_spent)}
-            {campaign.budget_limit && (
-              <span className="text-sm text-muted-foreground font-normal">
-                {' '}/ {formatCurrency(campaign.budget_limit)}
-              </span>
-            )}
-          </p>
-        </div>
+        )}
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <ShoppingCart className="h-3.5 w-3.5" />
@@ -215,11 +222,11 @@ export default function CampaignDetail() {
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <TrendingUp className="h-3.5 w-3.5" />
-            ROAS
+            {campaign.is_organic ? 'Engagement' : 'ROAS'}
           </div>
           <p className="mt-1 text-2xl font-bold tabular-nums">
             {campaign.performance_rating !== null
-              ? `${campaign.performance_rating.toFixed(1)}x`
+              ? `${campaign.performance_rating.toFixed(1)}${campaign.is_organic ? '' : 'x'}`
               : '—'}
           </p>
         </div>

@@ -53,12 +53,27 @@ interface ContentVariantInsert {
   hashtags: string[]
   call_to_action: string | null
   approval_status: 'pending'
+  variant_number: number
+  angle_label: string | null
   depth_score_clarity: number
   depth_score_persuasion: number
   depth_score_actionability: number
   depth_score_accuracy: number
   uncertain_claims: UncertainClaim[]
 }
+
+interface AnglePreset {
+  label: string
+  brief: string
+}
+
+const ANGLE_PRESETS: AnglePreset[] = [
+  { label: 'heritage', brief: 'Lead with craft, story, provenance. Why the shirt exists. Understated confidence, not nostalgia.' },
+  { label: 'fit', brief: 'Focus on how it wears — fabric, cut, shape. Sensory and specific, not abstract.' },
+  { label: 'occasion', brief: 'Anchor to a concrete moment it gets worn — a Friday night, a summer garden, a first impression.' },
+  { label: 'new-arrival', brief: 'Lean on the freshness. Something new, limited, just landed. Urgency without clichés.' },
+  { label: 'seasonal', brief: 'Place it in the current weather/mood. Specific about the season without naming the month.' },
+]
 
 // ---------------------------------------------------------------------------
 // Platform character limits
@@ -79,6 +94,7 @@ function buildDepthPrompt(
   shirt: ShirtProduct,
   platform: string,
   contextOverrides: Record<string, unknown>,
+  angle: AnglePreset | null,
 ): string {
   const limits = PLATFORM_LIMITS[platform] ?? PLATFORM_LIMITS.facebook
   const tags = shirt.contextual_tags.length > 0 ? shirt.contextual_tags.join(', ') : 'none'
@@ -88,8 +104,11 @@ function buildDepthPrompt(
   const contextNote = Object.keys(contextOverrides).length > 0
     ? `\nAdditional context: ${JSON.stringify(contextOverrides)}`
     : ''
+  const angleNote = angle
+    ? `\n\n**Editorial angle for this variant: ${angle.label}**\n${angle.brief}\nLean into this angle explicitly — the copy should read differently from other angles for the same product.`
+    : ''
 
-  return `You are generating social media content for Blake Mill, an independent men's shirt brand known for wit, cultural awareness, and irreverent but tasteful design.
+  return `You are generating social media content for Blake Mill, an independent men's shirt brand known for wit, cultural awareness, and irreverent but tasteful design.${angleNote}
 
 ## The DEPTH Method
 
@@ -209,7 +228,7 @@ interface ClaudeGeneratedContent {
   depth_scores: DepthScores
 }
 
-async function callClaude(prompt: string, anthropicKey: string): Promise<ClaudeGeneratedContent> {
+async function callClaude(prompt: string, anthropicKey: string, model = 'claude-sonnet-4-6'): Promise<ClaudeGeneratedContent> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -218,7 +237,7 @@ async function callClaude(prompt: string, anthropicKey: string): Promise<ClaudeG
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model,
       max_tokens: 1024,
       messages: [
         { role: 'user', content: prompt },
@@ -310,6 +329,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     shirt_ids: string[]
     platform: string
     context_overrides?: Record<string, unknown>
+    variant_count?: number
   }
 
   try {
@@ -319,6 +339,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const { campaign_id, shirt_ids, platform, context_overrides = {} } = body
+  const variantCount = Math.max(1, Math.min(5, Math.round(body.variant_count ?? 3)))
 
   // Input validation
   if (!campaign_id || typeof campaign_id !== 'string') {
@@ -386,41 +407,49 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
   }
 
-  // Generate content for each shirt
+  // Generate content for each shirt × angle
   const createdVariants: ContentVariantInsert[] = []
-  const generationErrors: Array<{ shirt_id: string; shirt_name: string; error: string }> = []
+  const generationErrors: Array<{ shirt_id: string; shirt_name: string; angle: string; error: string }> = []
 
   for (const shirt of shirts as ShirtProduct[]) {
-    try {
-      // First pass: generate content with DEPTH method
-      const firstPassPrompt = buildDepthPrompt(shirt, platform, context_overrides)
-      let generated = await callClaude(firstPassPrompt, anthropicKey)
+    for (let i = 0; i < variantCount; i++) {
+      const angle = variantCount > 1 ? ANGLE_PRESETS[i % ANGLE_PRESETS.length] : null
+      try {
+        // First pass: angle-biased DEPTH generation using Sonnet.
+        const firstPassPrompt = buildDepthPrompt(shirt, platform, context_overrides, angle)
+        let generated = await callClaude(firstPassPrompt, anthropicKey, 'claude-sonnet-4-6')
 
-      // Second pass: improve any dimension scoring below 8
-      if (!allScoresMeetThreshold(generated.depth_scores)) {
-        const improvementPrompt = buildImprovementPrompt(generated, shirt, platform)
-        const improved = await callClaude(improvementPrompt, anthropicKey)
+        // Second pass (improvement): runs only when needed; use cheaper/faster Haiku.
+        if (!allScoresMeetThreshold(generated.depth_scores)) {
+          const improvementPrompt = buildImprovementPrompt(generated, shirt, platform)
+          const improved = await callClaude(improvementPrompt, anthropicKey, 'claude-haiku-4-5-20251001')
+          generated = improved
+        }
 
-        // Use improved version; if it's still below threshold it's still the best we have
-        generated = improved
+        createdVariants.push({
+          campaign_id,
+          platform,
+          copy_text: generated.copy_text,
+          hashtags: generated.hashtags,
+          call_to_action: generated.call_to_action ?? null,
+          approval_status: 'pending',
+          variant_number: i + 1,
+          angle_label: angle?.label ?? null,
+          depth_score_clarity: Math.min(10, Math.max(1, Math.round(generated.depth_scores.clarity))),
+          depth_score_persuasion: Math.min(10, Math.max(1, Math.round(generated.depth_scores.persuasion))),
+          depth_score_actionability: Math.min(10, Math.max(1, Math.round(generated.depth_scores.actionability))),
+          depth_score_accuracy: Math.min(10, Math.max(1, Math.round(generated.depth_scores.accuracy))),
+          uncertain_claims: generated.uncertain_claims ?? [],
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        generationErrors.push({
+          shirt_id: shirt.id,
+          shirt_name: shirt.name,
+          angle: angle?.label ?? 'default',
+          error: message,
+        })
       }
-
-      createdVariants.push({
-        campaign_id,
-        platform,
-        copy_text: generated.copy_text,
-        hashtags: generated.hashtags,
-        call_to_action: generated.call_to_action ?? null,
-        approval_status: 'pending',
-        depth_score_clarity: Math.min(10, Math.max(1, Math.round(generated.depth_scores.clarity))),
-        depth_score_persuasion: Math.min(10, Math.max(1, Math.round(generated.depth_scores.persuasion))),
-        depth_score_actionability: Math.min(10, Math.max(1, Math.round(generated.depth_scores.actionability))),
-        depth_score_accuracy: Math.min(10, Math.max(1, Math.round(generated.depth_scores.accuracy))),
-        uncertain_claims: generated.uncertain_claims ?? [],
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      generationErrors.push({ shirt_id: shirt.id, shirt_name: shirt.name, error: message })
     }
   }
 

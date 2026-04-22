@@ -10,17 +10,23 @@ interface CampaignWizardProps {
   onComplete: (campaignId: string) => void
 }
 
-const TOTAL_STEPS = 7
+type StepKey = 'shirts' | 'channels' | 'schedule' | 'budget' | 'design' | 'generate' | 'review'
 
-const STEP_LABELS = [
-  'Select shirts',
-  'Choose channels',
-  'Set schedule',
-  'Set budget',
-  'Design',
-  'Generate content',
-  'Review & approve',
+interface StepDef { key: StepKey; label: string }
+
+const ALL_STEPS: StepDef[] = [
+  { key: 'shirts', label: 'Select shirts' },
+  { key: 'channels', label: 'Choose channels' },
+  { key: 'schedule', label: 'Set schedule' },
+  { key: 'budget', label: 'Set budget' },
+  { key: 'design', label: 'Design' },
+  { key: 'generate', label: 'Generate content' },
+  { key: 'review', label: 'Review & approve' },
 ]
+
+function computeSteps(isOrganic: boolean): StepDef[] {
+  return isOrganic ? ALL_STEPS.filter((s) => s.key !== 'budget') : ALL_STEPS
+}
 
 // ----------------------------------------------------------------
 // Supabase helpers
@@ -45,6 +51,7 @@ async function createCampaign(payload: {
   shirt_ids: string[]
   design_template_id: string | null
   post_type: 'single' | 'carousel'
+  is_organic: boolean
 }): Promise<string> {
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
@@ -55,12 +62,13 @@ async function createCampaign(payload: {
       channels: payload.channels,
       scheduled_start: payload.scheduled_start,
       scheduled_end: payload.scheduled_end,
-      budget_limit: payload.budget_limit,
+      budget_limit: payload.is_organic ? null : payload.budget_limit,
       budget_spent: 0,
       auto_approved: false,
       target_segments: [],
       design_template_id: payload.design_template_id,
       post_type: payload.post_type,
+      is_organic: payload.is_organic,
     })
     .select('id')
     .single()
@@ -84,7 +92,9 @@ async function createCampaign(payload: {
   return campaignId
 }
 
-async function triggerContentGeneration(campaignId: string): Promise<void> {
+async function triggerContentGeneration(args: { campaignId: string; variantCount: number }): Promise<void> {
+  const campaignId = args.campaignId
+  const variantCount = args.variantCount
   // Fetch the campaign to get its channels and linked shirts
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
@@ -170,6 +180,7 @@ async function triggerContentGeneration(campaignId: string): Promise<void> {
           campaign_id: campaignId,
           shirt_ids: shirtIds,
           platform,
+          variant_count: variantCount,
           context_overrides: Object.keys(searchInsights).length > 0
             ? { search_insights: searchInsights }
             : undefined,
@@ -193,20 +204,20 @@ async function triggerContentGeneration(campaignId: string): Promise<void> {
 // ----------------------------------------------------------------
 
 interface StepIndicatorProps {
-  current: number
+  steps: StepDef[]
+  currentIndex: number
 }
 
-function StepIndicator({ current }: StepIndicatorProps) {
+function StepIndicator({ steps, currentIndex }: StepIndicatorProps) {
   return (
     <nav aria-label="Campaign setup progress" className="mb-8">
       <ol className="flex items-center gap-0">
-        {STEP_LABELS.map((label, i) => {
-          const stepNum = i + 1
-          const isDone = stepNum < current
-          const isActive = stepNum === current
+        {steps.map((step, i) => {
+          const isDone = i < currentIndex
+          const isActive = i === currentIndex
 
           return (
-            <li key={label} className="flex items-center flex-1 last:flex-none">
+            <li key={step.key} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center gap-1">
                 <div
                   className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold border-2 transition-colors ${
@@ -218,17 +229,17 @@ function StepIndicator({ current }: StepIndicatorProps) {
                   }`}
                   aria-current={isActive ? 'step' : undefined}
                 >
-                  {isDone ? '✓' : stepNum}
+                  {isDone ? '✓' : i + 1}
                 </div>
                 <span
                   className={`hidden sm:block text-[10px] font-medium text-center leading-tight ${
                     isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 >
-                  {label}
+                  {step.label}
                 </span>
               </div>
-              {i < STEP_LABELS.length - 1 && (
+              {i < steps.length - 1 && (
                 <div
                   className={`flex-1 h-0.5 mx-1 mt-[-14px] sm:mt-[-18px] transition-colors ${
                     isDone ? 'bg-primary' : 'bg-border'
@@ -250,34 +261,41 @@ function StepIndicator({ current }: StepIndicatorProps) {
 export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   const { channels: connectedChannels } = useApp()
 
-  const [step, setStep] = useState(1)
+  const [stepIndex, setStepIndex] = useState(0)
   const [campaignName, setCampaignName] = useState('')
   const [selectedShirtIds, setSelectedShirtIds] = useState<Set<string>>(new Set())
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set())
   const [scheduledStart, setScheduledStart] = useState('')
   const [scheduledEnd, setScheduledEnd] = useState('')
   const [budgetLimit, setBudgetLimit] = useState('')
+  const [isOrganic, setIsOrganic] = useState(false)
   const [designTemplateId, setDesignTemplateId] = useState<string | null>(null)
   const [postType, setPostType] = useState<'single' | 'carousel'>('single')
+  const [variantCount, setVariantCount] = useState(3)
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null)
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [generationDone, setGenerationDone] = useState(false)
 
+  const steps = computeSteps(isOrganic)
+  const currentKey = steps[stepIndex]?.key ?? 'shirts'
+
   const shirtsQuery = useQuery<ShirtProduct[], Error>({
     queryKey: ['shirt_products'],
     queryFn: fetchShirts,
-    enabled: step === 1,
+    enabled: currentKey === 'shirts',
   })
 
   const createMutation = useMutation<string, Error, Parameters<typeof createCampaign>[0]>({
     mutationFn: createCampaign,
     onSuccess: (id) => {
       setCreatedCampaignId(id)
-      setStep(6)
+      // Advance to the Generate step after create
+      const generateIdx = steps.findIndex((s) => s.key === 'generate')
+      if (generateIdx !== -1) setStepIndex(generateIdx)
     },
   })
 
-  const generateMutation = useMutation<void, Error, string>({
+  const generateMutation = useMutation<void, Error, { campaignId: string; variantCount: number }>({
     mutationFn: triggerContentGeneration,
     onSuccess: () => {
       setGenerationDone(true)
@@ -308,15 +326,15 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   }
 
   function handleNext() {
-    if (step < TOTAL_STEPS) setStep((s) => s + 1)
+    if (stepIndex < steps.length - 1) setStepIndex((i) => i + 1)
   }
 
   function handleBack() {
-    if (step > 1) setStep((s) => s - 1)
+    if (stepIndex > 0) setStepIndex((i) => i - 1)
   }
 
   async function handleSaveAndGenerateStep() {
-    // Step 5 (Design) → 6 (Generate): create the campaign then trigger generation
+    // Design step → Generate step: create the campaign then trigger generation.
     await createMutation.mutateAsync({
       name: campaignName || 'Untitled Campaign',
       channels: Array.from(selectedChannels),
@@ -326,13 +344,14 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
       shirt_ids: Array.from(selectedShirtIds),
       design_template_id: designTemplateId,
       post_type: postType,
+      is_organic: isOrganic,
     })
   }
 
   async function handleGenerate() {
     if (!createdCampaignId) return
     setGenerationError(null)
-    await generateMutation.mutateAsync(createdCampaignId)
+    await generateMutation.mutateAsync({ campaignId: createdCampaignId, variantCount })
   }
 
   function handleFinish() {
@@ -344,8 +363,8 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   // ----------------------------------------------------------------
 
   function renderStep() {
-    switch (step) {
-      case 1:
+    switch (currentKey) {
+      case 'shirts':
         return (
           <div className="space-y-4">
             <div className="space-y-1">
@@ -420,41 +439,83 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 2:
+      case 'channels':
         return (
-          <div className="space-y-4">
-            <p className="text-sm font-medium text-foreground">Choose channels</p>
-            {connectedChannels.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No channels connected. Visit Channels to connect an account.
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Campaign type
               </p>
-            ) : (
-              <div className="space-y-2">
-                {connectedChannels.map((ch) => (
-                  <label
-                    key={ch.id}
-                    className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedChannels.has(ch.id)}
-                      onChange={() => toggleChannel(ch.id)}
-                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-foreground capitalize">
-                        {ch.platform}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{ch.account_name}</p>
-                    </div>
-                  </label>
-                ))}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsOrganic(false)}
+                  aria-pressed={!isOrganic}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    !isOrganic
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-background hover:bg-muted/30'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">Paid</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Boost with ad spend. Walks you through a Budget step.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOrganic(true)}
+                  aria-pressed={isOrganic}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    isOrganic
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-background hover:bg-muted/30'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">Organic</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Publish without paid boost. Skips the Budget step.
+                  </p>
+                </button>
               </div>
-            )}
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Channels
+              </p>
+              {connectedChannels.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No channels connected. Visit Channels to connect an account.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {connectedChannels.map((ch) => (
+                    <label
+                      key={ch.id}
+                      className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedChannels.has(ch.id)}
+                        onChange={() => toggleChannel(ch.id)}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-foreground capitalize">
+                          {ch.platform}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{ch.account_name}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )
 
-      case 3:
+      case 'schedule':
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Set schedule</p>
@@ -497,7 +558,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 4:
+      case 'budget':
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Set budget limit</p>
@@ -531,7 +592,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 5:
+      case 'design':
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Design</p>
@@ -539,6 +600,32 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
               Pick a saved template to use for this campaign's creatives, or keep it simple with an auto caption overlay.
             </p>
             <TemplatePicker value={designTemplateId} onChange={setDesignTemplateId} />
+
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Copy variants per platform · {variantCount}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                How many different angles of copy to generate for each channel. More variants = more room to pick the best take.
+              </p>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={variantCount}
+                onChange={(e) => setVariantCount(Number(e.target.value))}
+                className="w-full"
+                aria-label="Copy variants per platform"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+              </div>
+            </div>
 
             <div className="space-y-2 pt-2 border-t border-border">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -589,7 +676,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 6:
+      case 'generate':
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Generate content</p>
@@ -624,7 +711,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           </div>
         )
 
-      case 7:
+      case 'review':
         return (
           <div className="space-y-4">
             <p className="text-sm font-medium text-foreground">Review & approve</p>
@@ -692,15 +779,15 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
   // ----------------------------------------------------------------
 
   const canGoNext: boolean = (() => {
-    if (step === 1) return selectedShirtIds.size > 0
-    if (step === 2) return selectedChannels.size > 0
-    if (step === 5) return !createMutation.isPending
-    if (step === 6) return generationDone
+    if (currentKey === 'shirts') return selectedShirtIds.size > 0
+    if (currentKey === 'channels') return selectedChannels.size > 0
+    if (currentKey === 'design') return !createMutation.isPending
+    if (currentKey === 'generate') return generationDone
     return true
   })()
 
-  const isLastStep = step === TOTAL_STEPS
-  const isSaveStep = step === 5
+  const isLastStep = stepIndex === steps.length - 1
+  const isSaveStep = currentKey === 'design'
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -708,11 +795,11 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
         <div>
           <h2 className="text-xl font-semibold text-foreground">New Campaign</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Step {step} of {TOTAL_STEPS}: {STEP_LABELS[step - 1]}
+            Step {stepIndex + 1} of {steps.length}: {steps[stepIndex]?.label}
           </p>
         </div>
 
-        <StepIndicator current={step} />
+        <StepIndicator steps={steps} currentIndex={stepIndex} />
 
         {renderStep()}
 
@@ -721,7 +808,7 @@ export function CampaignWizard({ onComplete }: CampaignWizardProps) {
           <button
             type="button"
             onClick={handleBack}
-            disabled={step === 1 || createMutation.isPending || generateMutation.isPending}
+            disabled={stepIndex === 0 || createMutation.isPending || generateMutation.isPending}
             className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Back
