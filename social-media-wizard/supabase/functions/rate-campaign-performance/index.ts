@@ -1,5 +1,5 @@
-// T066 — Rate Performance Edge Function
-// POST /functions/v1/campaigns/rate-performance
+// Rate Campaign Performance Edge Function
+// POST /functions/v1/rate-campaign-performance
 // Body: { campaign_id: string }
 //
 // Fetches campaign metrics and comment data.
@@ -9,7 +9,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.24.3'
-import { getIntegrationKey } from '../../_shared/integration-credentials.ts'
+import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

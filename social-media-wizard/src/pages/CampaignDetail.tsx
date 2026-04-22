@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Play,
@@ -11,17 +13,39 @@ import {
   Eye,
   MousePointerClick,
   ShoppingCart,
+  Sparkles,
 } from 'lucide-react'
 import { useCampaignDetail, useUpdateCampaign } from '@/hooks/useCampaigns'
 import { CampaignStatusBadge } from '@/components/campaigns/CampaignStatusBadge'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { PLATFORM_META } from '@/lib/platforms'
+import { supabase } from '@/lib/supabase'
 import type { Platform } from '@/lib/types'
+
+interface RatingResult {
+  rating: number
+  commentary: string
+}
+
+async function rateCampaign(campaignId: string): Promise<RatingResult> {
+  const { data, error } = await supabase.functions.invoke<RatingResult>(
+    'rate-campaign-performance',
+    { method: 'POST', body: { campaign_id: campaignId } },
+  )
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Empty response')
+  return data
+}
 
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>()
   const { data: campaign, isLoading, error } = useCampaignDetail(id ?? '')
   const updateCampaign = useUpdateCampaign()
+  const [ratingResult, setRatingResult] = useState<RatingResult | null>(null)
+  const rateMutation = useMutation<RatingResult, Error, string>({
+    mutationFn: rateCampaign,
+    onSuccess: (result) => setRatingResult(result),
+  })
 
   if (!id) {
     return (
@@ -94,7 +118,16 @@ export default function CampaignDetail() {
             {campaign.campaign_type.replace('_', ' ')} &middot; Created {formatDate(campaign.created_at)}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => rateMutation.mutate(campaign.id)}
+            disabled={rateMutation.isPending}
+            className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            title="Ask Claude to rate this campaign 1–10 with commentary"
+          >
+            <Sparkles className="h-4 w-4" />
+            {rateMutation.isPending ? 'Rating…' : 'AI performance rating'}
+          </button>
           {(canPause || canActivate) && (
             <button
               onClick={handleToggleStatus}
@@ -118,6 +151,29 @@ export default function CampaignDetail() {
           )}
         </div>
       </div>
+
+      {/* AI rating result / error */}
+      {rateMutation.error && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          {rateMutation.error.message}
+        </div>
+      )}
+      {ratingResult && (
+        <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              AI performance rating
+            </h2>
+            <span className="text-2xl font-bold tabular-nums text-foreground">
+              {ratingResult.rating.toFixed(1)}<span className="text-sm font-normal text-muted-foreground"> / 10</span>
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+            {ratingResult.commentary}
+          </p>
+        </div>
+      )}
 
       {/* Metrics grid */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
