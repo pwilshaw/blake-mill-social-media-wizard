@@ -140,6 +140,18 @@ export function PropertiesPanel({ layer, palette, onUpdate }: Props) {
               />
             </Field>
 
+            <Field label={`Padding · ${(layer.padding_pct ?? 0).toFixed(1)}%`}>
+              <input
+                type="range"
+                min={0}
+                max={10}
+                step={0.1}
+                value={layer.padding_pct ?? 0}
+                onChange={(e) => onUpdate({ padding_pct: Number(e.target.value) })}
+                className="w-full"
+              />
+            </Field>
+
             <Field label={`Radius · ${layer.radius_pct ?? 0}%`}>
               <input
                 type="range"
