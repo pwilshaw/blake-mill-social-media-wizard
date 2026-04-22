@@ -1,6 +1,7 @@
 import { Bot, CloudSun, Calendar, Users, Search, Ticket } from 'lucide-react'
 import { ProviderConnector } from '@/components/integrations/ProviderConnector'
 import type { ProviderSpec } from '@/components/integrations/ProviderConnector'
+import { BrandAssets } from '@/components/integrations/BrandAssets'
 
 const PROVIDERS: ProviderSpec[] = [
   {
@@ -62,6 +63,8 @@ export default function Integrations() {
           API keys for third-party services. Keys are stored encrypted at rest in your project's database and only read by edge functions — they never hit the browser after saving.
         </p>
       </div>
+
+      <BrandAssets />
 
       <div className="grid gap-3 sm:grid-cols-2">
         {PROVIDERS.map((spec) => (
