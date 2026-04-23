@@ -367,6 +367,81 @@ export interface ShopBrand {
 }
 
 // ============================================================
+// WTP Conjoint Study
+// ============================================================
+
+export type PersonaKey =
+  | 'dtc'
+  | 'multi'
+  | 'email_first'
+  | 'b2b_services'
+  | 'creator'
+  | 'b2b_saas'
+  | 'consumer_local'
+  | 'fallback'
+
+export type WtpResponsesPerSet = 25 | 50 | 100
+
+export interface WtpFeature {
+  id: string
+  label: string
+}
+
+export interface WtpConfig {
+  product_name: string
+  price_points: [number, number, number]
+  features: WtpFeature[]
+  responses_per_set: WtpResponsesPerSet
+}
+
+export interface WtpPairOption {
+  price: number
+  features: Record<string, boolean>  // feature_id → included
+}
+
+export interface WtpResponse {
+  pair_id: string
+  option_1: WtpPairOption
+  option_2: WtpPairOption
+  /** Which option was shown first in the prompt — 1 or 2 */
+  first_shown: 1 | 2
+  claude_choice: 'option_1' | 'option_2' | 'outside' | 'parse_error'
+  reason: string | null
+  raw_text: string
+  ms: number
+}
+
+export interface WtpByFeature {
+  id: string
+  label: string
+  uplift_pp: number
+  wtp_gbp: number | null
+}
+
+export interface WtpResults {
+  n_responses: number
+  n_failed: number
+  purchase_rate: number
+  outside_rate: number
+  by_price: { price: number; purchase_rate: number }[]
+  by_feature: WtpByFeature[]
+  price_elasticity_pct_per_pound: number
+}
+
+export interface WtpStudy {
+  id: string
+  name: string
+  persona_key: PersonaKey
+  system_message: string
+  config: WtpConfig
+  responses: WtpResponse[]
+  results: WtpResults | null
+  status: 'draft' | 'running' | 'complete' | 'error' | 'cancelled'
+  created_at: string
+  updated_at: string
+}
+
+// ============================================================
 // Quick Launch Templates
 // ============================================================
 
