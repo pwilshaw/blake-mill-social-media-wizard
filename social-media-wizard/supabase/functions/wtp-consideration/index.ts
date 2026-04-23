@@ -37,6 +37,8 @@ interface PairOption {
 interface Body {
   system_message: string
   product_name: string
+  /** 'saas' or 'physical'. Defaults to 'saas' for backwards compat. */
+  study_type?: 'saas' | 'physical'
   pair: {
     pair_id: string
     option_1: PairOption
@@ -55,10 +57,30 @@ function buildFeatureLine(opt: PairOption, features: { id: string; label: string
 }
 
 function buildUserPrompt(body: Body): string {
-  const { pair, features, outside_option } = body
+  const { pair, features, outside_option, product_name } = body
   const first = pair.first_shown === 1 ? pair.option_1 : pair.option_2
   const second = pair.first_shown === 1 ? pair.option_2 : pair.option_1
+  const studyType = body.study_type ?? 'saas'
 
+  if (studyType === 'physical') {
+    const productLabel = product_name || 'product'
+    return `You are browsing ${productLabel}. You see two options side by side:
+
+1. £${first.price} — ${buildFeatureLine(first, features)}
+
+2. £${second.price} — ${buildFeatureLine(second, features)}
+
+You also have the option to ${outside_option}.
+
+Would you buy either one? If so, which?
+
+Respond with ONLY valid JSON, no preamble, no markdown, matching:
+{"choice":"option_1"|"option_2"|"outside","reason":"<one short sentence>"}
+
+Where "option_1" refers to the first option shown above and "option_2" refers to the second.`
+  }
+
+  // Default — SaaS / subscription framing
   return `You are browsing plan options. You see two options:
 
 1. £${first.price}/mo — ${buildFeatureLine(first, features)}

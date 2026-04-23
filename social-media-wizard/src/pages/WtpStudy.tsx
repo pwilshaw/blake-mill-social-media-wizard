@@ -7,7 +7,7 @@ import { ResultsStage } from '@/components/wtp/ResultsStage'
 import { buildPairs } from '@/lib/wtp/pair-builder'
 import { computeWtp } from '@/lib/wtp/wtp-calc'
 import { runWithLimit } from '@/lib/concurrency'
-import { PERSONAS } from '@/lib/wtp/personas'
+import { ALL_PERSONAS } from '@/lib/wtp/personas'
 import {
   createStudy,
   fetchStudy,
@@ -85,7 +85,8 @@ export default function WtpStudyPage() {
       setStage('running')
 
       const pairs = buildPairs(args.config, args.config.responses_per_set)
-      const outside_option = PERSONAS[args.persona_key].outside_option
+      const personaPreset = ALL_PERSONAS[args.persona_key]
+      const outside_option = personaPreset?.outside_option ?? 'not purchase at this time'
 
       const tasks = pairs.map((pair) => async (): Promise<WtpResponse> => {
         setInFlight((n) => n + 1)
@@ -93,6 +94,7 @@ export default function WtpStudyPage() {
           const result = await runConsideration({
             system_message: args.system_message,
             product_name: args.config.product_name,
+            study_type: args.config.study_type,
             pair,
             features: args.config.features,
             outside_option,

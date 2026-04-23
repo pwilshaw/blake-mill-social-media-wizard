@@ -370,7 +370,8 @@ export interface ShopBrand {
 // WTP Conjoint Study
 // ============================================================
 
-export type PersonaKey =
+// Business / SaaS buyer personas (the tool being evaluated is a SaaS product)
+export type BusinessPersonaKey =
   | 'dtc'
   | 'multi'
   | 'email_first'
@@ -380,6 +381,19 @@ export type PersonaKey =
   | 'consumer_local'
   | 'fallback'
 
+// Consumer / shopper personas (the product being evaluated is a physical good)
+export type ConsumerPersonaKey =
+  | 'style_conscious'
+  | 'gift_buyer'
+  | 'value_shopper'
+  | 'occasion_shopper'
+  | 'returning_customer'
+  | 'fallback_shopper'
+
+export type PersonaKey = BusinessPersonaKey | ConsumerPersonaKey
+
+export type StudyType = 'saas' | 'physical'
+
 export type WtpResponsesPerSet = 25 | 50 | 100
 
 export interface WtpFeature {
@@ -388,6 +402,7 @@ export interface WtpFeature {
 }
 
 export interface WtpConfig {
+  study_type: StudyType
   product_name: string
   price_points: [number, number, number]
   features: WtpFeature[]

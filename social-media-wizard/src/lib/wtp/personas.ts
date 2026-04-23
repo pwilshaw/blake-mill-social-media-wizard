@@ -1,7 +1,20 @@
-// WTP Conjoint personas — rule-priority auto-detection and the verbatim
-// system messages + outside-option phrasing per persona.
+// WTP Conjoint personas.
+//
+// Two sets:
+//  - BUSINESS_PERSONAS: evaluators of SaaS / tooling purchases (8 keys).
+//  - CONSUMER_PERSONAS: shoppers evaluating a physical product (6 keys).
+//
+// The study type ('saas' vs 'physical') picks the set; the detection rules
+// below apply to the SaaS case only — consumer studies default to the
+// generic shopper preset and rely on the user picking a more specific one.
 
-import type { PersonaKey, Platform } from '@/lib/types'
+import type {
+  BusinessPersonaKey,
+  ConsumerPersonaKey,
+  PersonaKey,
+  Platform,
+  StudyType,
+} from '@/lib/types'
 
 export interface PersonaInputs {
   activeChannels: Platform[]
@@ -17,42 +30,39 @@ export interface PersonaPreset {
 }
 
 // Rule-priority order — first match wins. Rule 2 (multi) is evaluated BEFORE
-// rule 1 (dtc) so the "everything connected" case matches multi. See plan.
-export function detectPersona({ activeChannels, hasShopify, hasKlaviyo }: PersonaInputs): PersonaKey {
+// rule 1 (dtc) so the "everything connected" case matches multi.
+export function detectBusinessPersona({
+  activeChannels,
+  hasShopify,
+  hasKlaviyo,
+}: PersonaInputs): BusinessPersonaKey {
   const has = (p: Platform) => activeChannels.includes(p)
 
-  // Rule 2 first (multi requires everything, so it's a superset of rule 1's DTC conditions).
   if (hasShopify && hasKlaviyo && has('instagram') && has('facebook') && has('linkedin')) {
     return 'multi'
   }
-  // Rule 1 — DTC
   if (hasShopify && hasKlaviyo && has('instagram') && has('facebook')) {
     return 'dtc'
   }
-  // Rule 3 — Email-first
   if (hasShopify && hasKlaviyo && !has('instagram') && !has('facebook')) {
     return 'email_first'
   }
-  // Rule 4 — B2B / professional services
   if (!hasShopify && has('linkedin') && has('facebook')) {
     return 'b2b_services'
   }
-  // Rule 5 — Creator (Instagram only)
   if (activeChannels.length === 1 && activeChannels[0] === 'instagram' && !hasShopify) {
     return 'creator'
   }
-  // Rule 6 — B2B SaaS / consultant (LinkedIn only)
   if (activeChannels.length === 1 && activeChannels[0] === 'linkedin' && !hasShopify) {
     return 'b2b_saas'
   }
-  // Rule 7 — Consumer brand / local (FB + IG, no Shopify, no LinkedIn)
   if (!hasShopify && has('facebook') && has('instagram') && !has('linkedin')) {
     return 'consumer_local'
   }
   return 'fallback'
 }
 
-export const PERSONAS: Record<PersonaKey, PersonaPreset> = {
+export const BUSINESS_PERSONAS: Record<BusinessPersonaKey, PersonaPreset> = {
   dtc: {
     key: 'dtc',
     label: 'DTC Ecommerce Brand Owner',
@@ -110,3 +120,71 @@ export const PERSONAS: Record<PersonaKey, PersonaPreset> = {
     outside_option: 'not purchase at this time',
   },
 }
+
+export const CONSUMER_PERSONAS: Record<ConsumerPersonaKey, PersonaPreset> = {
+  style_conscious: {
+    key: 'style_conscious',
+    label: 'Style-conscious shopper',
+    system_message:
+      "You are a style-conscious shopper who follows menswear and independent fashion closely. You notice fabric, cut and small details, and you enjoy discovering brands that feel different from the high street. You're willing to pay more for a piece that feels considered and distinctive, but you won't pay extra for a logo alone. You are selected at random to take a short survey about your shopping preferences.",
+    outside_option: 'keep looking elsewhere',
+  },
+  gift_buyer: {
+    key: 'gift_buyer',
+    label: 'Gift buyer',
+    system_message:
+      "You are shopping for someone else — a partner, family member, or close friend — and you want the gift to feel considered and a little special. Presentation and personality matter more than absolute price. You are willing to spend a bit more if it looks like it was chosen with care. You are selected at random to take a short survey about your shopping preferences.",
+    outside_option: 'look for something else',
+  },
+  value_shopper: {
+    key: 'value_shopper',
+    label: 'Value-driven shopper',
+    system_message:
+      "You shop on a clear budget and judge whether something is worth it based on fit, fabric quality and versatility. You'd rather own fewer, better items than lots of mediocre ones, but you need obvious reasons to pay above a reasonable price. You are not paying extra for branding alone. You are selected at random to take a short survey about your shopping preferences.",
+    outside_option: 'not buy today',
+  },
+  occasion_shopper: {
+    key: 'occasion_shopper',
+    label: 'Occasion shopper',
+    system_message:
+      "You are buying for a specific occasion — a wedding, big night out, important meeting, or trip — and you want to look right without overthinking it. You're happy to pay more for something memorable, but it has to feel right for the event. You are selected at random to take a short survey about your shopping preferences.",
+    outside_option: 'keep searching',
+  },
+  returning_customer: {
+    key: 'returning_customer',
+    label: 'Returning independent-brand customer',
+    system_message:
+      "You've bought shirts from small, independent brands before and you appreciate the craft. You read the descriptions, notice the little details — button choice, fabric weight, subtle prints — and pay a premium for things that feel made rather than manufactured. You're cautious about disappointment, so specifics matter. You are selected at random to take a short survey about your shopping preferences.",
+    outside_option: 'wait for something better',
+  },
+  fallback_shopper: {
+    key: 'fallback_shopper',
+    label: 'General shopper',
+    system_message:
+      "You are browsing for a shirt you'd actually wear. You care about how it looks and fits, and whether it's worth what they're asking for it. You are selected at random to take a short survey about your shopping preferences.",
+    outside_option: 'not buy today',
+  },
+}
+
+export const ALL_PERSONAS: Record<PersonaKey, PersonaPreset> = {
+  ...BUSINESS_PERSONAS,
+  ...CONSUMER_PERSONAS,
+}
+
+export function personasForStudyType(type: StudyType): Record<PersonaKey, PersonaPreset> {
+  return type === 'physical'
+    ? (CONSUMER_PERSONAS as Record<PersonaKey, PersonaPreset>)
+    : (BUSINESS_PERSONAS as Record<PersonaKey, PersonaPreset>)
+}
+
+export function defaultPersonaForStudyType(
+  type: StudyType,
+  inputs: PersonaInputs,
+): PersonaKey {
+  if (type === 'physical') return 'fallback_shopper'
+  return detectBusinessPersona(inputs)
+}
+
+// Back-compat export (old name used in early code paths that only cared about business).
+export const PERSONAS = BUSINESS_PERSONAS
+export const detectPersona = detectBusinessPersona

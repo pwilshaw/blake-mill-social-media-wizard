@@ -7,6 +7,7 @@ import type {
   WtpResponse,
   WtpResults,
   PersonaKey,
+  StudyType,
 } from '@/lib/types'
 import type { GeneratedPair } from './pair-builder'
 
@@ -88,6 +89,7 @@ export async function deleteStudy(id: string): Promise<void> {
 export interface ConsiderationArgs {
   system_message: string
   product_name: string
+  study_type: StudyType
   pair: GeneratedPair
   features: { id: string; label: string }[]
   outside_option: string

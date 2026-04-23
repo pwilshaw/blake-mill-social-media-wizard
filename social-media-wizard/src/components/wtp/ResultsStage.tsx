@@ -21,6 +21,9 @@ interface Props {
 export function ResultsStage({ study, onNewStudy }: Props) {
   const { results, responses, config, name, persona_key } = study
   if (!results) return null
+  const isPhysical = config.study_type === 'physical'
+  const priceUnit = isPhysical ? '£' : '£/mo'
+  const wtpUnit = isPhysical ? '£' : '£/mo'
 
   const chartData = results.by_feature.map((f) => ({
     feature: f.label,
@@ -100,7 +103,7 @@ export function ResultsStage({ study, onNewStudy }: Props) {
           value={`${results.price_elasticity_pct_per_pound.toFixed(2)} pp / £`}
           hint={
             results.price_elasticity_pct_per_pound < 0
-              ? 'purchase rate falls as price rises'
+              ? (isPhysical ? 'shoppers drop off as price rises' : 'purchase rate falls as price rises')
               : 'weak or inverted signal'
           }
         />
@@ -108,9 +111,13 @@ export function ResultsStage({ study, onNewStudy }: Props) {
 
       {/* WTP by feature */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Estimated WTP per feature</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          Estimated WTP per {isPhysical ? 'attribute' : 'feature'}
+        </h3>
         <p className="text-xs text-muted-foreground">
-          £/mo a simulated buyer would accept to add the feature. Derived from how often adding the feature shifted the choice across all considered pairs, scaled by the observed price sensitivity.
+          {wtpUnit} a simulated {isPhysical ? 'shopper' : 'buyer'} would accept to add the
+          {isPhysical ? ' attribute' : ' feature'}. Derived from how often adding it shifted
+          the choice across all considered pairs, scaled by the observed price sensitivity.
         </p>
         <div style={{ width: '100%', height: 48 + chartData.length * 44 }}>
           <ResponsiveContainer>
@@ -121,9 +128,9 @@ export function ResultsStage({ study, onNewStudy }: Props) {
               <Tooltip
                 formatter={(value) => {
                   const n = Number(value)
-                  return [Number.isFinite(n) ? `£${n.toFixed(2)}` : '—', 'WTP (£/mo)']
+                  return [Number.isFinite(n) ? `£${n.toFixed(2)}` : '—', `WTP (${wtpUnit})`]
                 }}
-                labelFormatter={(l) => `Feature: ${l}`}
+                labelFormatter={(l) => `${isPhysical ? 'Attribute' : 'Feature'}: ${l}`}
               />
               <Bar dataKey="wtp" radius={[0, 4, 4, 0]}>
                 {chartData.map((entry, i) => (
@@ -218,8 +225,15 @@ export function ResultsStage({ study, onNewStudy }: Props) {
         </summary>
         <div className="border-t border-border p-5 space-y-2 text-xs">
           <div><span className="text-muted-foreground">Product:</span> {config.product_name}</div>
-          <div><span className="text-muted-foreground">Prices:</span> £{config.price_points.join(' / £')}</div>
-          <div><span className="text-muted-foreground">Features:</span> {config.features.map((f) => f.label).join(', ')}</div>
+          <div>
+            <span className="text-muted-foreground">Prices:</span>{' '}
+            {config.price_points.map((p) => `${priceUnit === '£' ? '£' : '£'}${p}${priceUnit === '£/mo' ? '/mo' : ''}`).join(' / ')}
+          </div>
+          <div>
+            <span className="text-muted-foreground">{isPhysical ? 'Attributes' : 'Features'}:</span>{' '}
+            {config.features.map((f) => f.label).join(', ')}
+          </div>
+          <div><span className="text-muted-foreground">Study type:</span> {isPhysical ? 'Physical product' : 'SaaS / subscription'}</div>
           <div><span className="text-muted-foreground">Responses:</span> {config.responses_per_set}</div>
         </div>
       </details>
