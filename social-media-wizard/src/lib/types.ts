@@ -404,6 +404,8 @@ export interface WtpFeature {
 export interface WtpConfig {
   study_type: StudyType
   product_name: string
+  /** Optional link to a Shopify-synced shirt so we know what real product was tested. */
+  shirt_product_id?: string | null
   price_points: [number, number, number]
   features: WtpFeature[]
   responses_per_set: WtpResponsesPerSet

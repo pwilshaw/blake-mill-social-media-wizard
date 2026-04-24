@@ -11,6 +11,7 @@ import {
 import type {
   Platform,
   PersonaKey,
+  ShirtProduct,
   StudyType,
   WtpConfig,
   WtpFeature,
@@ -53,6 +54,26 @@ async function fetchPresence(): Promise<{ hasShopify: boolean; hasKlaviyo: boole
   }
 }
 
+async function fetchShirtsForPicker(): Promise<ShirtProduct[]> {
+  const { data, error } = await supabase
+    .from('shirt_products')
+    .select('*')
+    .order('name')
+  if (error) throw new Error(error.message)
+  return (data ?? []) as ShirtProduct[]
+}
+
+/**
+ * Derive a 3-point price ladder around a base price. Uses 0.7x / 1.0x / 1.4x
+ * so the runner has real price spread to detect elasticity.
+ */
+function priceLadderFrom(base: number): [number, number, number] {
+  const low = Math.max(1, Math.round(base * 0.7))
+  const mid = Math.max(low + 1, Math.round(base))
+  const high = Math.max(mid + 1, Math.round(base * 1.4))
+  return [low, mid, high]
+}
+
 const INPUT_CLASS =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
 
@@ -77,6 +98,7 @@ export function ConfigStage({ onRun, isSubmitting }: Props) {
 
   const [name, setName] = useState('Untitled WTP study')
   const [productName, setProductName] = useState('')
+  const [shirtProductId, setShirtProductId] = useState<string | null>(null)
   const [p1, setP1] = useState<string>('9')
   const [p2, setP2] = useState<string>('19')
   const [p3, setP3] = useState<string>('39')
@@ -96,14 +118,47 @@ export function ConfigStage({ onRun, isSubmitting }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detectedPersona])
 
-  // When study type flips, default sensible prices.
+  // When study type flips, default sensible prices and clear the shirt link.
   useEffect(() => {
     if (studyType === 'physical') {
       setP1('45'); setP2('65'); setP3('95')
     } else {
       setP1('9'); setP2('19'); setP3('39')
+      setShirtProductId(null)
     }
   }, [studyType])
+
+  const shirtsQuery = useQuery({
+    queryKey: ['wtp', 'shirts_for_picker'],
+    queryFn: fetchShirtsForPicker,
+    enabled: studyType === 'physical' && hasShopify,
+  })
+
+  const shirts = shirtsQuery.data ?? []
+
+  function handleShirtPick(id: string) {
+    if (id === '') {
+      setShirtProductId(null)
+      return
+    }
+    const shirt = shirts.find((s) => s.id === id)
+    if (!shirt) return
+    setShirtProductId(id)
+    setProductName(shirt.name)
+    // Build a price ladder around the shirt's current price to give the study
+    // real spread. User can override any of the three before running.
+    const [low, mid, high] = priceLadderFrom(shirt.price)
+    setP1(String(low))
+    setP2(String(mid))
+    setP3(String(high))
+    // Seed attributes from contextual_tags if we don't already have meaningful
+    // ones. Keep existing labels if the user started typing.
+    const empties = features.filter((f) => f.label.trim() === '').length
+    if (empties >= features.length && shirt.contextual_tags.length > 0) {
+      const tags = shirt.contextual_tags.slice(0, 5)
+      setFeatures(tags.map((t) => ({ id: newFeatureId(), label: t })))
+    }
+  }
 
   function addFeature() {
     if (features.length >= 5) return
@@ -130,6 +185,7 @@ export function ConfigStage({ onRun, isSubmitting }: Props) {
     const config: WtpConfig = {
       study_type: studyType,
       product_name: productName.trim(),
+      shirt_product_id: studyType === 'physical' ? shirtProductId : null,
       price_points: [Number(p1), Number(p2), Number(p3)] as [number, number, number],
       features: features.map((f) => ({ id: f.id, label: f.label.trim() })),
       responses_per_set: responsesPerSet,
@@ -215,6 +271,39 @@ export function ConfigStage({ onRun, isSubmitting }: Props) {
         </div>
       </div>
 
+      {isPhysical && hasShopify && (
+        <Field label="Shopify product (optional)">
+          {shirtsQuery.isLoading ? (
+            <p className="text-xs text-muted-foreground">Loading products…</p>
+          ) : shirts.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No Shopify products synced yet. <a href="/channels" className="text-primary underline">Sync in Channels</a>, or type a name below.
+            </p>
+          ) : (
+            <>
+              <select
+                value={shirtProductId ?? ''}
+                onChange={(e) => handleShirtPick(e.target.value)}
+                className={INPUT_CLASS}
+              >
+                <option value="">— none (type a name manually) —</option>
+                {shirts.map((s) => (
+                  <option key={s.id} value={s.id} disabled={s.stock_status === 'out_of_stock'}>
+                    {s.name} · £{s.price.toFixed(0)}
+                    {s.stock_status === 'out_of_stock' ? ' (out of stock)' : ''}
+                  </option>
+                ))}
+              </select>
+              {shirtProductId && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Picked a product — name, prices and attributes were auto-filled from its Shopify record. Override any below.
+                </p>
+              )}
+            </>
+          )}
+        </Field>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Study name">
           <input
@@ -226,7 +315,11 @@ export function ConfigStage({ onRun, isSubmitting }: Props) {
         <Field label={productLabel}>
           <input
             value={productName}
-            onChange={(e) => setProductName(e.target.value)}
+            onChange={(e) => {
+              setProductName(e.target.value)
+              // Typing a custom name unlinks from the shopify product.
+              if (shirtProductId) setShirtProductId(null)
+            }}
             placeholder={productPlaceholder}
             className={INPUT_CLASS}
           />
