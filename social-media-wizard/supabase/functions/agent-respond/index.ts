@@ -24,6 +24,7 @@ import {
 import type { AgentKey } from '../_shared/agent-context.ts'
 import { getIntegrationKey } from '../_shared/integration-credentials.ts'
 import { getAgentDataSlice } from '../_shared/agent-data.ts'
+import { getBrandKnowledge, formatBrandSection } from '../_shared/brand-knowledge.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -121,11 +122,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (tpl) templateRow = tpl
   }
 
-  // Recent channel history + data slice
-  const [recent, slice] = await Promise.all([
+  // Recent channel history + data slice + brand voice
+  const [recent, slice, brand] = await Promise.all([
     getRecentMessages(client, 30),
     getAgentDataSlice(client, body.agent_key),
+    getBrandKnowledge(client),
   ])
+  const brandSection = formatBrandSection(brand)
 
   const userMessageBlock = body.user_text
     ? `## Latest message from the Boss\n${body.user_text}`
@@ -150,7 +153,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 - You may end your reply with @cro, @social, or @acquisition to invite a teammate, but only if there is a real reason. Do not use mentions every reply.
 - Do not @ yourself.`
 
-  const prompt = [historyBlock, userMessageBlock, templateBlock, customRulesBlock, dataBlock, guardrails]
+  const prompt = [brandSection, historyBlock, userMessageBlock, templateBlock, customRulesBlock, dataBlock, guardrails]
     .filter(Boolean)
     .join('\n\n')
 

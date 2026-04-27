@@ -363,7 +363,18 @@ export interface ShopBrand {
   foreground_color: string | null
   logo_url: string | null
   square_logo_url: string | null
+  tone_of_voice: string | null
+  brand_guidelines: string | null
+  dos_donts: string | null
   updated_at: string
+}
+
+export interface BrandReferenceDesign {
+  id: string
+  url: string
+  caption: string | null
+  ordinal: number
+  created_at: string
 }
 
 // ============================================================

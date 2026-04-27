@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getIntegrationKey } from '../_shared/integration-credentials.ts'
+import { getBrandKnowledge, formatBrandSection } from '../_shared/brand-knowledge.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -158,8 +159,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return jsonResponse({ error: 'comment_text is required' }, 422)
     }
 
+    // Pull centralised brand voice and inject at the top of the prompt.
+    const brand = await getBrandKnowledge(client)
+    const brandSection = formatBrandSection(brand)
+
     // Build the prompt (inlined from engagement-prompts.ts since edge functions can't import from src/)
-    const prompt = `You are the community manager for Blake Mill, a men's shirt brand with a sharp, witty, irreverent tone.
+    const prompt = `${brandSection}
+
+You are the community manager for Blake Mill, a men's shirt brand with a sharp, witty, irreverent tone.
 
 ## Brand Voice
 Blake Mill is an independent men's shirt brand with a dry, witty, irreverent voice. The brand is culturally aware without being try-hard, confident without being arrogant, and playful without being offensive. Replies feel like they come from a smart human, not a corporate account. Never use hollow phrases like "Thanks for your support!" — instead, be specific, be interesting, be Blake Mill.

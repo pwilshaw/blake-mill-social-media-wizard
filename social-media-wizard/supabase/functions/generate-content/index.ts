@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getIntegrationKey } from '../_shared/integration-credentials.ts'
+import { getBrandKnowledge, formatBrandSection, BRAND_REFERENCE_LIMIT } from '../_shared/brand-knowledge.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -95,6 +96,7 @@ function buildDepthPrompt(
   platform: string,
   contextOverrides: Record<string, unknown>,
   angle: AnglePreset | null,
+  brandSection: string = '',
 ): string {
   const limits = PLATFORM_LIMITS[platform] ?? PLATFORM_LIMITS.facebook
   const tags = shirt.contextual_tags.length > 0 ? shirt.contextual_tags.join(', ') : 'none'
@@ -108,7 +110,8 @@ function buildDepthPrompt(
     ? `\n\n**Editorial angle for this variant: ${angle.label}**\n${angle.brief}\nLean into this angle explicitly — the copy should read differently from other angles for the same product.`
     : ''
 
-  return `You are generating social media content for Blake Mill, an independent men's shirt brand known for wit, cultural awareness, and irreverent but tasteful design.${angleNote}
+  const brandPreamble = brandSection ? `${brandSection}\n\n` : ''
+  return `${brandPreamble}You are generating social media content for Blake Mill, an independent men's shirt brand known for wit, cultural awareness, and irreverent but tasteful design.${angleNote}
 
 ## The DEPTH Method
 
@@ -228,7 +231,28 @@ interface ClaudeGeneratedContent {
   depth_scores: DepthScores
 }
 
-async function callClaude(prompt: string, anthropicKey: string, model = 'claude-sonnet-4-6'): Promise<ClaudeGeneratedContent> {
+type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'url'; url: string } }
+
+async function callClaude(
+  prompt: string,
+  anthropicKey: string,
+  model = 'claude-sonnet-4-6',
+  imageUrls: string[] = [],
+): Promise<ClaudeGeneratedContent> {
+  // Anthropic accepts a string OR a content-block array. Use blocks only when
+  // we have at least one image, so the cheaper text-only path is unchanged.
+  const userContent: string | ContentBlock[] = imageUrls.length > 0
+    ? [
+        { type: 'text', text: prompt },
+        ...imageUrls.slice(0, BRAND_REFERENCE_LIMIT).map<ContentBlock>((url) => ({
+          type: 'image',
+          source: { type: 'url', url },
+        })),
+      ]
+    : prompt
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -240,7 +264,7 @@ async function callClaude(prompt: string, anthropicKey: string, model = 'claude-
       model,
       max_tokens: 1024,
       messages: [
-        { role: 'user', content: prompt },
+        { role: 'user', content: userContent },
       ],
     }),
   })
@@ -322,6 +346,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!anthropicKey) {
     return jsonResponse({ error: 'Anthropic API key not configured. Add one in Integrations.' }, 500)
   }
+
+  // Brand voice + reference images. Fetched once; injected on every iteration.
+  const brand = await getBrandKnowledge(client)
+  const brandSection = formatBrandSection(brand)
+  const referenceUrls = brand.reference_image_urls
 
   // Parse body
   let body: {
@@ -415,11 +444,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     for (let i = 0; i < variantCount; i++) {
       const angle = variantCount > 1 ? ANGLE_PRESETS[i % ANGLE_PRESETS.length] : null
       try {
-        // First pass: angle-biased DEPTH generation using Sonnet.
-        const firstPassPrompt = buildDepthPrompt(shirt, platform, context_overrides, angle)
-        let generated = await callClaude(firstPassPrompt, anthropicKey, 'claude-sonnet-4-6')
+        // First pass: angle-biased DEPTH generation using Sonnet, with brand
+        // voice injected at the top of the prompt and the top reference
+        // designs attached as vision blocks for visual context.
+        const firstPassPrompt = buildDepthPrompt(shirt, platform, context_overrides, angle, brandSection)
+        let generated = await callClaude(firstPassPrompt, anthropicKey, 'claude-sonnet-4-6', referenceUrls)
 
         // Second pass (improvement): runs only when needed; use cheaper/faster Haiku.
+        // No vision on the improvement pass — it's correcting an existing draft, not generating.
         if (!allScoresMeetThreshold(generated.depth_scores)) {
           const improvementPrompt = buildImprovementPrompt(generated, shirt, platform)
           const improved = await callClaude(improvementPrompt, anthropicKey, 'claude-haiku-4-5-20251001')
