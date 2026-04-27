@@ -1,4 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
 import { Loader2, Megaphone, Activity, ShoppingBag, Bot, AlertCircle } from 'lucide-react'
+import { listAgentSettings } from '@/lib/agents/api'
 import type { TeamMessage as TeamMessageT, AgentKey } from '@/lib/types'
 
 const AGENT_META: Record<AgentKey, { label: string; initial: string; color: string }> = {
@@ -48,6 +50,18 @@ export function TeamMessage({ message }: { message: TeamMessageT }) {
   const isError = message.status === 'error'
   const indented = message.hop > 0 && !isBoss
 
+  // Look up the agent's custom avatar (if any). Cached across the page via
+  // the same query key the rail uses, so this is essentially free.
+  const settingsQuery = useQuery({
+    queryKey: ['agent_settings'],
+    queryFn: listAgentSettings,
+    staleTime: 5 * 60 * 1000,
+    enabled: !isBoss && !isSystem,
+  })
+  const agentAvatar = message.agent_key
+    ? (settingsQuery.data ?? []).find((s) => s.agent_key === message.agent_key)?.avatar_url ?? null
+    : null
+
   if (isSystem) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 px-3 bg-muted/30 rounded-md">
@@ -70,9 +84,17 @@ export function TeamMessage({ message }: { message: TeamMessageT }) {
 
   return (
     <div className={`flex gap-3 ${indented ? 'ml-10' : ''}`} data-hop={message.hop}>
-      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-semibold text-sm ${avatarColor}`}>
-        {isBoss ? <Megaphone className="h-4 w-4" /> : avatarLabel}
-      </div>
+      {agentAvatar && !isBoss ? (
+        <img
+          src={agentAvatar}
+          alt={agentMeta?.label ?? 'Agent avatar'}
+          className="h-9 w-9 flex-shrink-0 rounded-full object-cover ring-1 ring-border"
+        />
+      ) : (
+        <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-semibold text-sm ${avatarColor}`}>
+          {isBoss ? <Megaphone className="h-4 w-4" /> : avatarLabel}
+        </div>
+      )}
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap text-xs">
           <span className="font-semibold text-foreground">{headerLabel}</span>

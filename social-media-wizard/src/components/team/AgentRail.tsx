@@ -1,7 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Play, Settings, ChevronDown, ChevronRight, Clock } from 'lucide-react'
-import { runTemplate, updateAgentSettings, updateTemplate } from '@/lib/agents/api'
+import { Play, Settings, ChevronDown, ChevronRight, Clock, Upload, Trash2 } from 'lucide-react'
+import {
+  clearAgentAvatar,
+  runTemplate,
+  updateAgentSettings,
+  updateTemplate,
+  uploadAgentAvatar,
+} from '@/lib/agents/api'
 import { AGENT_DISPLAY } from './TeamMessage'
 import type { AgentKey, AgentSettings, AgentTemplate } from '@/lib/types'
 
@@ -35,9 +41,17 @@ function AgentCard({ settings, templates }: { settings: AgentSettings; templates
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/30 transition-colors"
       >
-        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${meta.color}`}>
-          {meta.initial}
-        </div>
+        {settings.avatar_url ? (
+          <img
+            src={settings.avatar_url}
+            alt={settings.display_name}
+            className="h-8 w-8 rounded-full object-cover ring-1 ring-border"
+          />
+        ) : (
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${meta.color}`}>
+            {meta.initial}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground truncate">{settings.display_name}</p>
           <p className="text-[11px] text-muted-foreground">{templates.length} templates</p>
@@ -141,6 +155,9 @@ function SettingsDialog({ settings, onClose }: { settings: AgentSettings; onClos
   const queryClient = useQueryClient()
   const [systemPrompt, setSystemPrompt] = useState(settings.system_prompt)
   const [customRules, setCustomRules] = useState(settings.custom_rules ?? '')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const meta = AGENT_DISPLAY[settings.agent_key]
+
   const save = useMutation({
     mutationFn: () => updateAgentSettings(settings.agent_key, { system_prompt: systemPrompt, custom_rules: customRules || null }),
     onSuccess: () => {
@@ -149,16 +166,82 @@ function SettingsDialog({ settings, onClose }: { settings: AgentSettings; onClos
     },
   })
 
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadAgentAvatar(settings.agent_key, file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agent_settings'] }),
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: () => clearAgentAvatar(settings.agent_key),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agent_settings'] }),
+  })
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) uploadMutation.mutate(file)
+    e.target.value = ''
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={onClose}
     >
       <div
-        className="bg-card border border-border rounded-lg shadow-lg w-[90vw] max-w-2xl p-5 space-y-4"
+        className="bg-card border border-border rounded-lg shadow-lg w-[90vw] max-w-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-base font-semibold text-foreground">Persona — {settings.display_name}</h3>
+
+        <div className="flex items-center gap-3">
+          {settings.avatar_url ? (
+            <img
+              src={settings.avatar_url}
+              alt={settings.display_name}
+              className="h-16 w-16 rounded-full object-cover ring-1 ring-border"
+            />
+          ) : (
+            <div className={`flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold ${meta.color}`}>
+              {meta.initial}
+            </div>
+          )}
+          <div className="space-y-1">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Avatar</span>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={onPick}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadMutation.isPending}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
+              >
+                <Upload className="h-3 w-3" />
+                {uploadMutation.isPending ? 'Uploading…' : settings.avatar_url ? 'Replace' : 'Upload'}
+              </button>
+              {settings.avatar_url && (
+                <button
+                  type="button"
+                  onClick={() => removeMutation.mutate()}
+                  disabled={removeMutation.isPending}
+                  className="inline-flex items-center gap-1 text-xs text-destructive hover:underline disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Remove
+                </button>
+              )}
+            </div>
+            {uploadMutation.error && (
+              <p className="text-xs text-destructive">{(uploadMutation.error as Error).message}</p>
+            )}
+          </div>
+        </div>
+
         <label className="block space-y-1">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">System prompt</span>
           <textarea

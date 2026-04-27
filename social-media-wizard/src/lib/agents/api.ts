@@ -72,13 +72,32 @@ export async function runTemplate(
 
 export async function updateAgentSettings(
   agent_key: AgentKey,
-  patch: Partial<Pick<AgentSettings, 'system_prompt' | 'custom_rules' | 'is_active'>>,
+  patch: Partial<Pick<AgentSettings, 'system_prompt' | 'custom_rules' | 'is_active' | 'avatar_url'>>,
 ): Promise<void> {
   const { error } = await supabase
     .from('agent_settings')
     .update(patch)
     .eq('agent_key', agent_key)
   if (error) throw new Error(error.message)
+}
+
+const AVATAR_BUCKET = 'brand-assets'
+const AVATAR_PREFIX = 'agent-avatars'
+
+export async function uploadAgentAvatar(agent_key: AgentKey, file: File): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+  const path = `${AVATAR_PREFIX}/${agent_key}-${Date.now()}.${ext}`
+  const upload = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type })
+  if (upload.error) throw new Error(upload.error.message)
+  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path)
+  await updateAgentSettings(agent_key, { avatar_url: data.publicUrl })
+  return data.publicUrl
+}
+
+export async function clearAgentAvatar(agent_key: AgentKey): Promise<void> {
+  await updateAgentSettings(agent_key, { avatar_url: null })
 }
 
 export async function updateTemplate(

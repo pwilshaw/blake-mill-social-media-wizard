@@ -486,6 +486,7 @@ export interface AgentSettings {
   display_name: string
   system_prompt: string
   custom_rules: string | null
+  avatar_url: string | null
   is_active: boolean
   updated_at: string
 }
