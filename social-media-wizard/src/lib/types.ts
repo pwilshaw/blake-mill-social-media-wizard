@@ -459,6 +459,69 @@ export interface WtpStudy {
 }
 
 // ============================================================
+// Agent Workforce (team channel)
+// ============================================================
+
+export type AgentKey = 'social_media' | 'cro' | 'acquisition'
+
+export type TeamMessageRole = 'boss' | 'agent' | 'system'
+
+export type TeamMessageTrigger = 'boss' | 'agent' | 'schedule' | 'manual_template'
+
+export type TeamMessageStatus = 'pending' | 'complete' | 'error'
+
+export interface AgentSettings {
+  agent_key: AgentKey
+  display_name: string
+  system_prompt: string
+  custom_rules: string | null
+  is_active: boolean
+  updated_at: string
+}
+
+export interface AgentTemplate {
+  id: string
+  agent_key: AgentKey
+  template_key: string
+  name: string
+  description: string | null
+  prompt_template: string
+  custom_rules: string | null
+  cron_expr: string | null
+  is_active: boolean
+  last_run_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TeamMessage {
+  id: string
+  role: TeamMessageRole
+  agent_key: AgentKey | null
+  content: string
+  data_attachment: Record<string, unknown> | null
+  parent_id: string | null
+  mentions: AgentKey[]
+  template_key: string | null
+  triggered_by: TeamMessageTrigger
+  hop: number
+  status: TeamMessageStatus
+  error: string | null
+  ms: number | null
+  created_at: string
+}
+
+export interface AgentUsageRow {
+  id: string
+  used_at: string
+  agent_key: AgentKey
+  trigger: TeamMessageTrigger
+  template_key: string | null
+  ms: number | null
+  estimated_cost_usd: number | null
+}
+
+// ============================================================
 // Quick Launch Templates
 // ============================================================
 

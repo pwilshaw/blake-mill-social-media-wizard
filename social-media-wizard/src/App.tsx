@@ -26,6 +26,7 @@ const SearchIntelligence = lazy(() => import('@/pages/SearchIntelligence'))
 const Integrations = lazy(() => import('@/pages/Integrations'))
 const Insights = lazy(() => import('@/pages/Insights'))
 const WtpStudy = lazy(() => import('@/pages/WtpStudy'))
+const Team = lazy(() => import('@/pages/Team'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
 const Terms = lazy(() => import('@/pages/Terms'))
 
@@ -73,6 +74,7 @@ function ProtectedApp() {
             <Route path="insights" element={<Insights />} />
             <Route path="wtp-study" element={<WtpStudy />} />
             <Route path="wtp-study/:id" element={<WtpStudy />} />
+            <Route path="team" element={<Team />} />
           </Route>
         </Routes>
       </AppProvider>

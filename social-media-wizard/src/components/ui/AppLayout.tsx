@@ -16,6 +16,7 @@ import {
   KeyRound,
   Sparkles,
   FlaskConical,
+  Users2,
   LogOut,
   Menu,
   X,
@@ -29,6 +30,7 @@ const NAV_SECTIONS = [
     label: null,
     items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/team', label: 'Team', icon: Users2 },
       { to: '/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/creative-templates', label: 'Templates', icon: Layers },
       { to: '/calendar', label: 'Calendar', icon: CalendarDays },
