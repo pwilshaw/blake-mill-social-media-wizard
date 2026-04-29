@@ -157,6 +157,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // Dispatch each agent. Awaited so the response includes their replies.
+  // Use the anon key for the Authorization header — the receiving function's
+  // gateway verifies the header is a valid JWT, and the new-format service
+  // role key isn't one. Internally each function uses the service role for
+  // DB access via createClient(supabaseUrl, serviceRoleKey).
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
   const respondUrl = `${supabaseUrl}/functions/v1/agent-respond`
   const replies = await Promise.allSettled(
     agents.map((agent_key) =>
@@ -164,7 +169,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${serviceRoleKey}`,
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
         },
         body: JSON.stringify({
           agent_key,
@@ -177,11 +183,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
     ),
   )
 
+  // Detect a dispatch failure so the UI can surface it. If every agent reply
+  // came back without a 'message_id', record a system-level error message in
+  // the channel so the boss isn't left staring at a silent screen.
+  const replyPayloads = replies.map((r) => r.status === 'fulfilled' ? r.value : { error: String(r.reason) })
+  const allFailed = replyPayloads.length > 0 && replyPayloads.every((r: { message_id?: string }) => !r.message_id)
+  if (allFailed) {
+    const detail = JSON.stringify(replyPayloads).slice(0, 280)
+    await client.from('team_messages').insert({
+      role: 'system',
+      content: `Agent dispatch failed — no replies came back. Detail: ${detail}`,
+      parent_id: bossRow!.id,
+      triggered_by: 'boss',
+      status: 'error',
+    })
+  }
+
   return jsonResponse({
     boss_message_id: bossRow!.id,
     routed_to: agents,
     router_reason: routerReason,
-    replies: replies.map((r) => r.status === 'fulfilled' ? r.value : { error: String(r.reason) }),
+    replies: replyPayloads,
+    all_failed: allFailed,
     // Surface remaining budget for UI display
     budget: await checkUsageBudget(client),
   })

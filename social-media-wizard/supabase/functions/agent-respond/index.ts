@@ -213,6 +213,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let followUpFired: AgentKey[] = []
     if (mentions.length > 0 && hop < HOP_LIMIT) {
       const dispatcherUrl = `${supabaseUrl}/functions/v1/agent-respond`
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
       const seen = new Set<AgentKey>([body.agent_key])
       for (const m of mentions) {
         if (seen.has(m)) continue
@@ -224,7 +225,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
           },
           body: JSON.stringify({
             agent_key: m,

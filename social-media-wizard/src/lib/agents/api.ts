@@ -47,14 +47,23 @@ export async function listTemplates(): Promise<AgentTemplate[]> {
 
 export async function postBossMessage(
   content: string,
-): Promise<{ boss_message_id: string; routed_to: AgentKey[]; router_reason: string }> {
+): Promise<{ boss_message_id: string; routed_to: AgentKey[]; router_reason: string; all_failed?: boolean }> {
   const { data, error } = await supabase.functions.invoke<{
     boss_message_id: string
     routed_to: AgentKey[]
     router_reason: string
+    all_failed?: boolean
+    replies?: Array<Record<string, unknown>>
   }>('team-message', { method: 'POST', body: { content } })
   if (error) throw new Error(error.message)
   if (!data) throw new Error('Empty response')
+  if (data.all_failed) {
+    const first = data.replies?.[0] ?? {}
+    const reason = (first as { error?: string; message?: string }).error
+      ?? (first as { error?: string; message?: string }).message
+      ?? 'unknown'
+    throw new Error(`Agents could not reply — ${reason}`)
+  }
   return data
 }
 

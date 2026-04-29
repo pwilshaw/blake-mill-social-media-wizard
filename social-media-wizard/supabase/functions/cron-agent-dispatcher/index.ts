@@ -64,6 +64,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // Dispatch sequentially to avoid hammering the cap on a single tick
   const fired: { id: string; name: string }[] = []
   const respondUrl = `${supabaseUrl}/functions/v1/agent-respond`
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
   for (const t of due) {
     // Re-check budget per template — we may cross the line mid-loop
     const b = await checkUsageBudget(client)
@@ -73,7 +74,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${serviceRoleKey}`,
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
         },
         body: JSON.stringify({
           agent_key: t.agent_key,

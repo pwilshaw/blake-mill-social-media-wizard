@@ -364,6 +364,21 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Internal-only functions invoked by other edge functions or pg_cron via
+# net.http_post. The new sb_secret_* / sb_publishable_* key format isn't a
+# JWT, so the gateway's verify_jwt rejects internal dispatches. These
+# functions are still callable only by holders of the function URL +
+# project keys; the function's own logic uses the service role for DB
+# access. team-message stays JWT-verified since the boss UI calls it.
+[functions.agent-respond]
+verify_jwt = false
+
+[functions.run-template]
+verify_jwt = false
+
+[functions.cron-agent-dispatcher]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

@@ -42,12 +42,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const trigger = body.trigger ?? 'manual_template'
   const respondUrl = `${supabaseUrl}/functions/v1/agent-respond`
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
 
   const res = await fetch(respondUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${serviceRoleKey}`,
+      'Authorization': `Bearer ${anonKey}`,
+      'apikey': anonKey,
     },
     body: JSON.stringify({
       agent_key: tpl.agent_key,
