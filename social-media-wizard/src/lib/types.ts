@@ -19,7 +19,7 @@ export type CampaignType =
   | 'holiday'
   | 'scheduled'
 
-export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'google_ads' | 'snapchat' | 'shopify'
+export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'google_ads' | 'snapchat' | 'shopify' | 'youtube'
 
 export type ApprovalStatus =
   | 'pending'
@@ -27,7 +27,7 @@ export type ApprovalStatus =
   | 'rejected'
   | 'revision_requested'
 
-export type AssetType = 'image' | 'carousel_slide' | 'video_thumbnail'
+export type AssetType = 'image' | 'carousel_slide' | 'video_thumbnail' | 'video'
 
 export type PostType = 'single' | 'carousel'
 
@@ -114,12 +114,22 @@ export interface ContentVariant {
   approval_status: ApprovalStatus
   variant_number: number
   angle_label: string | null
+  meta: VariantMeta
   depth_score_clarity: number
   depth_score_persuasion: number
   depth_score_actionability: number
   depth_score_accuracy: number
   uncertain_claims: UncertainClaim[]
   created_at: string
+}
+
+export interface VariantMeta {
+  /** YouTube video title (max 100 chars). */
+  title?: string
+  /** YouTube video description (max 5000 chars). */
+  description?: string
+  /** YouTube tags. Max 30 items, 500 chars total. */
+  tags?: string[]
 }
 
 export interface UncertainClaim {
@@ -375,6 +385,59 @@ export interface BrandReferenceDesign {
   caption: string | null
   ordinal: number
   created_at: string
+}
+
+// ============================================================
+// YouTube + Google Ads
+// ============================================================
+
+export type VideoUploadStatus = 'uploaded' | 'publishing' | 'published' | 'failed'
+
+export interface VideoUpload {
+  id: string
+  campaign_id: string | null
+  storage_path: string
+  storage_url: string
+  file_name: string | null
+  size_bytes: number | null
+  duration_seconds: number | null
+  status: VideoUploadStatus
+  status_detail: string | null
+  youtube_video_id: string | null
+  youtube_channel_account_id: string | null
+  selected_variant_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type YoutubeAdCampaignStatus =
+  | 'draft'
+  | 'submitting'
+  | 'active'
+  | 'paused'
+  | 'rejected'
+  | 'error'
+
+export interface YoutubeAdTargeting {
+  keywords?: string[]
+  topics?: string[]
+  channels?: string[]
+}
+
+export interface YoutubeAdCampaign {
+  id: string
+  campaign_id: string | null
+  video_upload_id: string
+  google_customer_id: string
+  google_campaign_id: string | null
+  google_ad_group_id: string | null
+  google_ad_id: string | null
+  daily_budget_micros: number | null
+  targeting: YoutubeAdTargeting
+  status: YoutubeAdCampaignStatus
+  status_detail: string | null
+  created_at: string
+  updated_at: string
 }
 
 // ============================================================

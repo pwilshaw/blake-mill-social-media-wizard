@@ -56,6 +56,7 @@ interface ContentVariantInsert {
   approval_status: 'pending'
   variant_number: number
   angle_label: string | null
+  meta: Record<string, unknown>
   depth_score_clarity: number
   depth_score_persuasion: number
   depth_score_actionability: number
@@ -85,6 +86,11 @@ const PLATFORM_LIMITS: Record<string, { copy: number; hashtags: number }> = {
   instagram: { copy: 2200, hashtags: 30 },
   linkedin: { copy: 3000, hashtags: 5 },
   tiktok: { copy: 2200, hashtags: 20 },
+  // YouTube isn't quite the same shape — title (100) + description (5000) +
+  // tags (30 items, 500 chars total). We expose the description-equivalent as
+  // `copy` and tags as `hashtags` so the rest of the function still works,
+  // and a YouTube-specific prompt branch produces title via a separate field.
+  youtube: { copy: 5000, hashtags: 30 },
 }
 
 // ---------------------------------------------------------------------------
@@ -140,10 +146,11 @@ Consider:
 
 **T — Task Breakdown**
 Produce the following outputs:
-1. copy_text: The post copy (within character limit for ${platform})
-2. hashtags: An array of relevant hashtags (max ${limits.hashtags}, no # prefix)
+1. copy_text: ${platform === 'youtube' ? 'The video description (max 5000 chars). Lead with one clear sentence that explains what the video is about, then expand. End with a CTA + a couple of relevant links if helpful.' : `The post copy (within character limit for ${platform})`}
+2. hashtags: An array of relevant ${platform === 'youtube' ? 'YouTube tags (max 30, descriptive search terms — no #, e.g. "menswear", "blake mill", "pattern shirts")' : `hashtags (max ${limits.hashtags}, no # prefix)`}
 3. call_to_action: A single short CTA string (e.g. "Shop now", "Find yours today") or null if not appropriate
 4. uncertain_claims: An array of { "claim": string, "explanation": string } for any factual claims you cannot verify (e.g. "best shirt for summer" is subjective — flag it)
+${platform === 'youtube' ? '5. video_title: A YouTube title for this variant — max 100 chars, no clickbait, no all-caps. Lead with the hook.' : ''}
 
 **H — Human Feedback Loop (Self-Assessment)**
 After generating the content, score yourself honestly (1–10) on:
@@ -159,7 +166,7 @@ Return ONLY valid JSON. No markdown, no explanation, no preamble:
 {
   "copy_text": "...",
   "hashtags": ["hashtag1", "hashtag2"],
-  "call_to_action": "...",
+  "call_to_action": "...",${platform === 'youtube' ? '\n  "video_title": "...",' : ''}
   "uncertain_claims": [
     { "claim": "...", "explanation": "..." }
   ],
@@ -227,6 +234,8 @@ interface ClaudeGeneratedContent {
   copy_text: string
   hashtags: string[]
   call_to_action: string | null
+  /** YouTube-only: variant-specific video title (max 100 chars). */
+  video_title?: string
   uncertain_claims: UncertainClaim[]
   depth_scores: DepthScores
 }
@@ -458,6 +467,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
           generated = improved
         }
 
+        // YouTube-specific metadata lives in `meta` so the rest of the
+        // app sees structured title/description/tags.
+        const meta: Record<string, unknown> =
+          platform === 'youtube'
+            ? {
+                title: (generated.video_title ?? generated.call_to_action ?? shirt.name).slice(0, 100),
+                description: generated.copy_text,
+                tags: generated.hashtags,
+              }
+            : {}
+
         createdVariants.push({
           campaign_id,
           platform,
@@ -467,6 +487,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           approval_status: 'pending',
           variant_number: i + 1,
           angle_label: angle?.label ?? null,
+          meta,
           depth_score_clarity: Math.min(10, Math.max(1, Math.round(generated.depth_scores.clarity))),
           depth_score_persuasion: Math.min(10, Math.max(1, Math.round(generated.depth_scores.persuasion))),
           depth_score_actionability: Math.min(10, Math.max(1, Math.round(generated.depth_scores.actionability))),

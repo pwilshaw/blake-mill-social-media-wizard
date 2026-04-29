@@ -49,7 +49,7 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
   },
   {
     id: 'google_ads',
-    label: 'Google Ads',
+    label: 'Google (Ads + YouTube)',
     brandColor: '#4285F4',
     icon: (
       <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden="true">

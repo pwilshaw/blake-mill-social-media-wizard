@@ -8,12 +8,14 @@ export const PLATFORM_META: Record<Platform, { label: string; color: string; bgC
   google_ads: { label: 'Google Ads', color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   snapchat: { label: 'Snapchat', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
   shopify: { label: 'Shopify', color: 'text-lime-700', bgColor: 'bg-lime-50' },
+  youtube: { label: 'YouTube', color: 'text-red-600', bgColor: 'bg-red-50' },
 }
 
 export const ALL_PLATFORMS: Platform[] = [
   'facebook',
   'instagram',
   'google_ads',
+  'youtube',
   'tiktok',
   'snapchat',
   'linkedin',

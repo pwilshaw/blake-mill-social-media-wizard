@@ -64,7 +64,12 @@ function getPlatformConfigs(baseRedirectUri: string) {
       tokenUrl: 'https://oauth2.googleapis.com/token',
       clientId: googleClientId,
       clientSecret: googleClientSecret,
-      scopes: 'https://www.googleapis.com/auth/adwords',
+      // Combined scopes: ads + YouTube upload + read. One OAuth covers both.
+      scopes: [
+        'https://www.googleapis.com/auth/adwords',
+        'https://www.googleapis.com/auth/youtube.upload',
+        'https://www.googleapis.com/auth/youtube.readonly',
+      ].join(' '),
       redirectUri: baseRedirectUri,
       configured: Boolean(googleClientId && googleClientSecret),
     },
@@ -166,9 +171,31 @@ async function exchangeStandardOAuth(
 
   return {
     access_token: tokenData.access_token,
+    refresh_token: tokenData.refresh_token ?? null,
     expires_in: tokenData.expires_in ?? 3600,
     account_id: tokenData.advertiser_id ?? tokenData.sub ?? crypto.randomUUID(),
     account_name: tokenData.display_name ?? tokenData.name ?? config.platform,
+  }
+}
+
+/**
+ * After a successful Google OAuth, look up the connected YouTube channel via
+ * the Data API so we can store its real channel name + ID alongside the
+ * google_ads row.
+ */
+async function fetchYouTubeChannel(accessToken: string): Promise<{ id: string; title: string } | null> {
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+    if (!res.ok) return null
+    const data = await res.json() as { items?: Array<{ id: string; snippet?: { title?: string } }> }
+    const item = data.items?.[0]
+    if (!item) return null
+    return { id: item.id, title: item.snippet?.title ?? 'YouTube channel' }
+  } catch {
+    return null
   }
 }
 
@@ -365,7 +392,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
 
         // For non-Meta platforms: auto-store as before
-        let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string }
+        let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string; refresh_token?: string | null }
 
         if (platform === 'tiktok') {
           tokenResult = await exchangeTikTokToken(config, code)
@@ -381,11 +408,33 @@ Deno.serve(async (req: Request): Promise<Response> => {
             account_id: tokenResult.account_id,
             account_name: tokenResult.account_name,
             access_token: tokenResult.access_token,
+            refresh_token: tokenResult.refresh_token ?? null,
             token_expires_at: expiresAt,
             is_active: true,
           },
           { onConflict: 'platform,account_id' }
         )
+
+        // Google OAuth covers both Ads and YouTube. Mirror the row so
+        // YouTube shows up as its own connected channel with the same
+        // refresh token.
+        if (platform === 'google_ads') {
+          const yt = await fetchYouTubeChannel(tokenResult.access_token)
+          if (yt) {
+            await client.from('channel_accounts').upsert(
+              {
+                platform: 'youtube',
+                account_id: yt.id,
+                account_name: yt.title,
+                access_token: tokenResult.access_token,
+                refresh_token: tokenResult.refresh_token ?? null,
+                token_expires_at: expiresAt,
+                is_active: true,
+              },
+              { onConflict: 'platform,account_id' }
+            )
+          }
+        }
 
         return Response.redirect(`${appUrl}/channels?connected=${platform}`, 302)
       } catch (err) {
@@ -408,7 +457,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const config = configs[platform]
       if (!config || !config.configured) return jsonResponse({ error: `${platform} is not configured` }, 422)
 
-      let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string }
+      let tokenResult: { access_token: string; expires_in: number; account_id: string; account_name: string; refresh_token?: string | null }
       if (platform === 'facebook' || platform === 'instagram') {
         tokenResult = await exchangeMetaToken(config, code)
       } else if (platform === 'tiktok') {
@@ -424,6 +473,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           account_id: tokenResult.account_id,
           account_name: tokenResult.account_name,
           access_token: tokenResult.access_token,
+          refresh_token: tokenResult.refresh_token ?? null,
           token_expires_at: expiresAt,
           is_active: true,
         },
@@ -431,6 +481,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
       ).select('id, platform, account_name, account_id, is_active, token_expires_at').single()
 
       if (error) return jsonResponse({ error: error.message }, 500)
+
+      if (platform === 'google_ads') {
+        const yt = await fetchYouTubeChannel(tokenResult.access_token)
+        if (yt) {
+          await client.from('channel_accounts').upsert(
+            {
+              platform: 'youtube',
+              account_id: yt.id,
+              account_name: yt.title,
+              access_token: tokenResult.access_token,
+              refresh_token: tokenResult.refresh_token ?? null,
+              token_expires_at: expiresAt,
+              is_active: true,
+            },
+            { onConflict: 'platform,account_id' }
+          )
+        }
+      }
+
       return jsonResponse(data, 201)
     }
 

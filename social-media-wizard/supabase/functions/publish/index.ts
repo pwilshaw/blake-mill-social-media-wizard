@@ -207,14 +207,56 @@ Deno.serve(async (req: Request): Promise<Response> => {
         let errorMessage: string | null = null
 
         try {
-          platformPostId = await postToMetaPage(
-            channel.account_id,
-            channel.access_token,
-            fullMessage,
-            creative?.file_url ?? null,
-            scheduledPublishTime
-          )
-          postStatus = scheduledPublishTime !== null ? 'queued' : 'published'
+          if (variant.platform === 'youtube') {
+            // YouTube path: find a video_uploads row linked to this campaign +
+            // dispatch youtube-upload, which streams the file to YouTube and
+            // sets the youtube_video_id on the row.
+            const { data: video } = await client
+              .from('video_uploads')
+              .select('id, youtube_video_id, status')
+              .eq('campaign_id', campaign_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            if (!video) {
+              throw new Error('No video uploaded for this campaign yet — upload one on /videos first.')
+            }
+            if (video.status === 'published' && video.youtube_video_id) {
+              platformPostId = video.youtube_video_id
+              postStatus = 'published'
+            } else {
+              const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+              const res = await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/youtube-upload`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${anonKey}`,
+                  'apikey': anonKey,
+                },
+                body: JSON.stringify({
+                  video_upload_id: video.id,
+                  variant_id: variant.id,
+                  privacy_status: 'public',
+                }),
+              })
+              const payload = await res.json() as { youtube_video_id?: string; error?: string }
+              if (!res.ok || !payload.youtube_video_id) {
+                throw new Error(payload.error ?? `youtube-upload failed (HTTP ${res.status})`)
+              }
+              platformPostId = payload.youtube_video_id
+              postStatus = 'published'
+            }
+          } else {
+            platformPostId = await postToMetaPage(
+              channel.account_id,
+              channel.access_token,
+              fullMessage,
+              creative?.file_url ?? null,
+              scheduledPublishTime
+            )
+            postStatus = scheduledPublishTime !== null ? 'queued' : 'published'
+          }
         } catch (err) {
           postStatus = 'failed'
           errorMessage = err instanceof Error ? err.message : 'Unknown publish error'

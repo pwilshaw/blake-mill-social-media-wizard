@@ -147,4 +147,24 @@ export const PLATFORM_FORMATS: Record<Platform, PlatformDefinition> = {
       },
     ],
   },
+
+  youtube: {
+    icon: 'video',
+    formats: [
+      {
+        name: 'Video',
+        // Pre-rendered videos at standard 16:9 widescreen.
+        aspect_ratios: ['16:9'],
+        // Description: up to 5000 chars. Tags up to 30 items.
+        character_limit: 5000,
+        hashtag_limit: 30,
+      },
+      {
+        name: 'Short',
+        aspect_ratios: ['9:16'],
+        character_limit: 5000,
+        hashtag_limit: 30,
+      },
+    ],
+  },
 }
