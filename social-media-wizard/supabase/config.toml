@@ -376,7 +376,42 @@ verify_jwt = false
 [functions.run-template]
 verify_jwt = false
 
+# Cron-triggered functions. pg_cron invokes them via net.http_post with
+# 'Authorization: Bearer ' || current_setting('app.settings.service_role_key').
+# If the project's service_role_key has been rotated to the new sb_secret_*
+# format, that header isn't a valid JWT and the gateway rejects the call
+# before the function runs. Disabling verify_jwt unblocks the entire cron
+# fleet. The functions are still callable only by holders of the project URL
+# + an internal pg_cron secret.
 [functions.cron-agent-dispatcher]
+verify_jwt = false
+
+[functions.cron-budget-reset]
+verify_jwt = false
+
+[functions.cron-comment-check]
+verify_jwt = false
+
+[functions.cron-event-check]
+verify_jwt = false
+
+[functions.cron-metrics-sync]
+verify_jwt = false
+
+[functions.cron-shopify-sync]
+verify_jwt = false
+
+[functions.cron-weather-check]
+verify_jwt = false
+
+[functions.cron-weekly-summary]
+verify_jwt = false
+
+# sync-shopify is dispatched by cron-shopify-sync internally — same JWT
+# format issue. Frontend "Sync now" button on Channels passes the
+# frontend's anon JWT so that path stays auth'd at the gateway level
+# regardless. Disabling verify_jwt here only affects the internal call.
+[functions.sync-shopify]
 verify_jwt = false
 
 [analytics]
