@@ -388,6 +388,68 @@ export interface BrandReferenceDesign {
 }
 
 // ============================================================
+// Competitor monitor + Creator discovery (Apify-backed)
+// ============================================================
+
+export type CompetitorPlatform = 'instagram' | 'youtube' | 'tiktok' | 'facebook'
+
+export interface CompetitorHandle {
+  id: string
+  platform: CompetitorPlatform
+  handle: string
+  label: string | null
+  is_active: boolean
+  last_scraped_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CompetitorPost {
+  id: string
+  competitor_handle_id: string
+  platform_post_id: string
+  published_at: string | null
+  content: string | null
+  url: string | null
+  views: number
+  likes: number
+  comments: number
+  engagement_rate_pct: number | null
+  raw: Record<string, unknown>
+  created_at: string
+}
+
+export type CreatorStatus = 'shortlisted' | 'contacted' | 'partnered' | 'declined'
+
+export interface CreatorShortlistRow {
+  id: string
+  platform: 'youtube' | 'instagram' | 'tiktok'
+  channel_id: string | null
+  channel_name: string
+  channel_url: string | null
+  subscriber_count: number | null
+  video_count: number | null
+  view_count: number | null
+  country: string | null
+  description: string | null
+  notes: string | null
+  status: CreatorStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface DiscoveredCreator {
+  channel_id: string | null
+  channel_name: string
+  channel_url: string | null
+  subscriber_count: number | null
+  video_count: number | null
+  view_count: number | null
+  country: string | null
+  description: string | null
+}
+
+// ============================================================
 // YouTube + Google Ads
 // ============================================================
 

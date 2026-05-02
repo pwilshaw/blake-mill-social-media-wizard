@@ -51,6 +51,44 @@ interface PostRow {
   } | null
 }
 
+interface CompetitorPostRow {
+  id: string
+  platform_post_id: string
+  published_at: string | null
+  content: string | null
+  url: string | null
+  views: number
+  likes: number
+  comments: number
+  engagement_rate_pct: number | null
+  competitor_handles: { handle: string; platform: string; label: string | null } | null
+}
+
+async function recentCompetitorPosts(client: SupabaseClient): Promise<unknown[]> {
+  const since = new Date(Date.now() - 14 * 86400_000).toISOString()
+  const { data } = await client
+    .from('competitor_posts')
+    .select(`
+      id, platform_post_id, published_at, content, url, views, likes, comments, engagement_rate_pct,
+      competitor_handles!inner ( handle, platform, label )
+    `)
+    .gte('published_at', since)
+    .order('engagement_rate_pct', { ascending: false, nullsFirst: false })
+    .limit(20)
+    .returns<CompetitorPostRow[]>()
+  return (data ?? []).map((p) => ({
+    competitor: p.competitor_handles?.handle ?? 'unknown',
+    platform: p.competitor_handles?.platform ?? 'unknown',
+    published_at: p.published_at,
+    content_preview: p.content?.slice(0, 220) ?? null,
+    views: p.views,
+    likes: p.likes,
+    comments: p.comments,
+    engagement_rate_pct: p.engagement_rate_pct,
+    url: p.url,
+  }))
+}
+
 async function socialMediaSlice(client: SupabaseClient): Promise<AgentDataSlice> {
   const since = new Date(Date.now() - WINDOW_DAYS * 86400_000).toISOString()
   const { data: posts } = await client
@@ -116,6 +154,10 @@ async function socialMediaSlice(client: SupabaseClient): Promise<AgentDataSlice>
   const data_quality: DataQuality =
     rows.length === 0 ? 'thin' : rows.length < 20 ? 'thin' : rows.length < 60 ? 'fair' : 'rich'
 
+  // Pull last-14-days top competitor posts so the social media expert can
+  // reference them in templates like competitor_pulse.
+  const competitor_posts = await recentCompetitorPosts(client)
+
   return {
     agent_key: 'social_media',
     window_days: WINDOW_DAYS,
@@ -143,6 +185,7 @@ async function socialMediaSlice(client: SupabaseClient): Promise<AgentDataSlice>
           : 0,
       })),
       top_posts: topPosts,
+      competitor_posts_last_14d: competitor_posts,
     },
   }
 }
@@ -254,10 +297,20 @@ interface SegmentRow {
   source: string
 }
 
+interface ShortlistRow {
+  channel_name: string
+  channel_url: string | null
+  subscriber_count: number | null
+  video_count: number | null
+  country: string | null
+  description: string | null
+  status: string
+}
+
 async function acquisitionSlice(client: SupabaseClient): Promise<AgentDataSlice> {
   const since = new Date(Date.now() - WINDOW_DAYS * 86400_000).toISOString()
 
-  const [segResp, postsResp, channelResp] = await Promise.all([
+  const [segResp, postsResp, channelResp, shortlistResp] = await Promise.all([
     client.from('customer_segments').select('id, name, age_range, style_preference, purchase_intent, member_count, purchase_occasions, source').returns<SegmentRow[]>(),
     client
       .from('channel_posts')
@@ -265,6 +318,13 @@ async function acquisitionSlice(client: SupabaseClient): Promise<AgentDataSlice>
       .eq('status', 'published')
       .gte('published_at', since),
     client.from('channel_accounts').select('platform, is_active').eq('is_active', true),
+    client
+      .from('creator_shortlist')
+      .select('channel_name, channel_url, subscriber_count, video_count, country, description, status')
+      .eq('platform', 'youtube')
+      .order('subscriber_count', { ascending: false, nullsFirst: false })
+      .limit(20)
+      .returns<ShortlistRow[]>(),
   ])
 
   const segments = segResp.data ?? []
@@ -273,6 +333,7 @@ async function acquisitionSlice(client: SupabaseClient): Promise<AgentDataSlice>
     content_variants: { platform: string } | null
   }>
   const channels = (channelResp.data ?? []) as Array<{ platform: string }>
+  const shortlist = shortlistResp.data ?? []
 
   const channelEfficiency = new Map<string, { impressions: number; spend: number; engagement: number }>()
   for (const p of posts) {
@@ -322,6 +383,15 @@ async function acquisitionSlice(client: SupabaseClient): Promise<AgentDataSlice>
       })),
       ltv_data_wired: false,
       repeat_purchase_data_wired: false,
+      youtube_creators_shortlist: shortlist.map((s) => ({
+        channel_name: s.channel_name,
+        channel_url: s.channel_url,
+        subscribers: s.subscriber_count,
+        videos: s.video_count,
+        country: s.country,
+        description_preview: s.description?.slice(0, 220) ?? null,
+        status: s.status,
+      })),
     },
   }
 }
