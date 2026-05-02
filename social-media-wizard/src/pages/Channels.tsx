@@ -84,6 +84,30 @@ interface ShopifySyncResult {
   brand_synced: boolean
 }
 
+interface BackfillResult {
+  scraped: number
+  upserted: number
+  platform: string
+  handle: string
+}
+
+async function backfillPosts(channelAccountId: string, handle: string, limit = 50): Promise<BackfillResult> {
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/backfill-channel-posts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({ channel_account_id: channelAccountId, handle, limit }),
+  })
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(err.error ?? `Backfill failed (HTTP ${res.status})`)
+  }
+  return (await res.json()) as BackfillResult
+}
+
 async function syncShopifyNow(shopDomain?: string): Promise<ShopifySyncResult> {
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-shopify`, {
     method: 'POST',
@@ -121,6 +145,8 @@ function tokenExpiryLabel(expiresAt: string): { label: string; isExpired: boolea
 // Per-channel settings row
 // ---------------------------------------------------------------------------
 
+const BACKFILL_SUPPORTED: ReadonlySet<string> = new Set(['instagram', 'youtube', 'facebook'])
+
 function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisconnect: (id: string) => void }) {
   const queryClient = useQueryClient()
   const [editingBudget, setEditingBudget] = useState(false)
@@ -128,6 +154,7 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
     account.default_budget_limit !== null ? String(account.default_budget_limit) : ''
   )
   const [syncStatus, setSyncStatus] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null)
+  const [backfillStatus, setBackfillStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
   const { mutate: savebudget, isPending } = useMutation({
     mutationFn: () => {
@@ -161,6 +188,28 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
     },
     onError: (err: Error) => setSyncStatus({ kind: 'err', text: err.message }),
   })
+
+  const { mutate: runBackfill, isPending: isBackfilling } = useMutation({
+    mutationFn: (handle: string) => backfillPosts(account.id, handle, 50),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['team_messages'] })
+      setBackfillStatus({
+        kind: 'ok',
+        text: `Backfilled ${result.upserted} ${result.platform} post${result.upserted === 1 ? '' : 's'} for @${result.handle}.`,
+      })
+    },
+    onError: (err: Error) => setBackfillStatus({ kind: 'err', text: err.message }),
+  })
+
+  function startBackfill() {
+    const defaultHandle = (account.account_name ?? '').replace(/^@/, '')
+    const handle = window.prompt(
+      `Handle to backfill from ${account.platform} (no @ needed):`,
+      defaultHandle,
+    )
+    if (!handle?.trim()) return
+    runBackfill(handle.trim())
+  }
 
   const expiry = tokenExpiryLabel(account.token_expires_at)
   const platformInfo = PLATFORM_META[account.platform] ?? { label: account.platform, color: 'text-foreground', bgColor: 'bg-muted' }
@@ -260,20 +309,45 @@ function ChannelRow({ account, onDisconnect }: { account: ChannelAccount; onDisc
         </div>
       )}
 
+      {/* Backfill status */}
+      {backfillStatus && (
+        <div
+          className={`rounded-md px-2 py-1.5 text-xs ${
+            backfillStatus.kind === 'ok'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-destructive/10 text-destructive border border-destructive/40'
+          }`}
+          role="status"
+        >
+          {backfillStatus.text}
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="border-t border-border pt-2 flex items-center justify-between gap-2">
-        {isShopify ? (
-          <button
-            type="button"
-            onClick={() => runSync()}
-            disabled={isSyncing}
-            className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSyncing ? 'Syncing…' : 'Sync products & brand'}
-          </button>
-        ) : (
-          <span />
-        )}
+      <div className="border-t border-border pt-2 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          {isShopify && (
+            <button
+              type="button"
+              onClick={() => runSync()}
+              disabled={isSyncing}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSyncing ? 'Syncing…' : 'Sync products & brand'}
+            </button>
+          )}
+          {BACKFILL_SUPPORTED.has(account.platform) && (
+            <button
+              type="button"
+              onClick={startBackfill}
+              disabled={isBackfilling}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Pull recent posts from this channel via Apify"
+            >
+              {isBackfilling ? 'Backfilling…' : 'Backfill posts'}
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => {

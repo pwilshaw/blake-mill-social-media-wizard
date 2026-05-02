@@ -1,4 +1,4 @@
-import { Bot, CloudSun, Calendar, Users, Search, Ticket } from 'lucide-react'
+import { Bot, CloudSun, Calendar, Users, Search, Ticket, Workflow } from 'lucide-react'
 import { ProviderConnector } from '@/components/integrations/ProviderConnector'
 import type { ProviderSpec } from '@/components/integrations/ProviderConnector'
 import { BrandAssets } from '@/components/integrations/BrandAssets'
@@ -51,6 +51,16 @@ const PROVIDERS: ProviderSpec[] = [
     docsUrl: 'https://serpapi.com/manage-api-key',
     icon: Search,
     placeholder: 'Secret API key',
+  },
+  {
+    provider: 'apify',
+    label: 'Apify',
+    description:
+      'One token covers all the read-only scrapers — Instagram, YouTube, TikTok, Facebook, Google Search, competitor product pages, Reddit. Used by the Backfill button on /channels and the agent research templates.',
+    docsUrl: 'https://console.apify.com/account/integrations',
+    icon: Workflow,
+    placeholder: 'apify_api_xxx',
+    credentialField: 'token',
   },
 ]
 
